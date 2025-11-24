@@ -18,7 +18,7 @@ const App: React.FC = () => {
   const [logs, setLogs] = useState<LogEntry[]>([{
       id: 'init',
       timestamp: new Date(),
-      action: 'NEXUS 系统核心已启动 / System initialized',
+      action: '河图 系统核心已启动 / System initialized',
       status: 'success'
   }]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -314,7 +314,7 @@ const App: React.FC = () => {
        {/* Header Overlay */}
        <div className="absolute top-4 left-4 z-30 flex items-center gap-4">
           <div className="bg-slate-900/90 backdrop-blur border border-slate-700 px-4 py-2 rounded shadow-lg flex flex-col">
-             <span className="font-bold text-slate-100 tracking-[0.2em] text-sm">NEXUS OSINT</span>
+             <span className="font-bold text-slate-100 tracking-[0.2em] text-sm">河图 情报分析系统</span>
              <div className="flex items-center gap-2 mt-1">
                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
                <span className="text-[9px] text-slate-400 font-mono">INTELLIGENCE WORKSTATION</span>

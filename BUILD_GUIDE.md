@@ -1,7 +1,7 @@
 
-# 📦 Nexus OSINT 客户端打包指南
+# 📦 客户端打包指南
 
-本指南将指导您如何将 **Nexus OSINT Platform** 从 Web 网页应用打包成可在 Windows、macOS 和 Linux 上运行的独立桌面应用程序 (.exe / .dmg / .AppImage)。
+本指南将指导您如何将 **河图情报分析系统** 从 Web 网页应用打包成可在 Windows、macOS 和 Linux 上运行的独立桌面应用程序 (.exe / .dmg / .AppImage)。
 
 我们将使用业界标准的 **Electron** 框架进行封装。
 
@@ -199,9 +199,9 @@ npm run electron:build
 ```
 
 构建完成后，安装包将生成在项目的 `release` 文件夹中：
-*   **Windows**: `Nexus OSINT Setup 5.2.0.exe`
-*   **macOS**: `Nexus OSINT-5.2.0.dmg`
-*   **Linux**: `Nexus OSINT-5.2.0.AppImage`
+*   **Windows**: `Hetu OSINT Setup 5.2.0.exe`
+*   **macOS**: `Hetu OSINT-5.2.0.dmg`
+*   **Linux**: `Hetu OSINT-5.2.0.AppImage`
 
 ---
 

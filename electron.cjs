@@ -41,7 +41,7 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1400,
     height: 900,
-    title: "Nexus OSINT Platform",
+    title: "河图情报分析系统",
     backgroundColor: '#0B0F19', // 匹配应用背景色
     webPreferences: {
       nodeIntegration: false,
