@@ -174,12 +174,36 @@ export const executeTool = async (
 
     // Construct Config with user preferences
     const generationConfig: any = {
-        systemInstruction: systemInstruction,
-        responseMimeType: "application/json",
-        responseSchema: graphSchema,
-        tools: toolsConfig.length > 0 ? toolsConfig : undefined,
         temperature: aiConfig.temperature
     };
+
+    // Add tools OR structured output (mutually exclusive per Gemini API constraints)
+    if (toolsConfig.length > 0) {
+        // When using tools (e.g., googleSearch), cannot use responseMimeType/responseSchema
+        generationConfig.tools = toolsConfig;
+        // Add explicit JSON format instruction to system prompt when tools are used
+        systemInstruction += `
+
+CRITICAL: Your response MUST be valid JSON with this exact structure:
+{
+  "summary": "string - Analysis summary in Chinese",
+  "updated_properties": [{"key": "string", "value": "string"}],
+  "new_entities": [{
+    "title": "string",
+    "type": "string (must be one of the NodeType enum values)",
+    "description": "string",
+    "data": [{"key": "string", "value": "string"}],
+    "relationship_label": "string"
+  }]
+}`;
+    } else {
+        // When not using tools, enforce structured JSON output via schema
+        generationConfig.responseMimeType = "application/json";
+        generationConfig.responseSchema = graphSchema;
+    }
+
+    // Set system instruction for all cases
+    generationConfig.systemInstruction = systemInstruction;
 
     // Add Thinking Config if enabled and budget > 0
     if (aiConfig.enableThinking && aiConfig.thinkingBudget > 0) {

@@ -62,6 +62,30 @@ export const ENTITY_DEFAULT_FIELDS: Partial<Record<NodeType, Record<string, stri
   [NodeType.SSL_CERT]: {
     "CN": "", "颁发者": "", "有效期起": "", "有效期止": "", "指纹(SHA1)": ""
   },
+  [NodeType.INFRASTRUCTURE]: {
+    "基础设施类型": "", "IP地址": "", "端口": "", "服务": "", "组织归属": ""
+  },
+  [NodeType.NETWORK_TRAFFIC]: {
+    "源IP": "", "目标IP": "", "协议": "", "端口": "", "数据包数量": "", "流量大小": ""
+  },
+  [NodeType.PROCESS]: {
+    "进程名": "", "PID": "", "父进程": "", "命令行": "", "用户": "", "运行路径": ""
+  },
+  [NodeType.MUTEX]: {
+    "互斥体名称": "", "创建者": "", "恶意软件关联": ""
+  },
+  [NodeType.REGISTRY_KEY]: {
+    "注册表路径": "", "键名": "", "键值": "", "数据类型": "", "修改时间": ""
+  },
+  [NodeType.DIRECTORY]: {
+    "目录路径": "", "权限": "", "创建时间": "", "包含文件数": ""
+  },
+  [NodeType.USER_ACCOUNT]: {
+    "用户名": "", "域": "", "全名": "", "权限级别": "", "创建时间": "", "最后登录": ""
+  },
+  [NodeType.X509_CERTIFICATE]: {
+    "序列号": "", "主题": "", "颁发者": "", "有效期起": "", "有效期止": "", "公钥算法": "", "签名算法": ""
+  },
 
   // --- 3. COMMUNICATION ---
   [NodeType.EMAIL]: {
@@ -82,6 +106,18 @@ export const ENTITY_DEFAULT_FIELDS: Partial<Record<NodeType, Record<string, stri
   [NodeType.APP]: {
     "应用名称": "", "包名": "", "版本": "", "开发者": "", "下载来源": ""
   },
+  [NodeType.BLOG]: {
+    "博客名称": "", "URL": "", "平台": "", "作者": "", "注册时间": "", "文章数": ""
+  },
+  [NodeType.PODCAST]: {
+    "播客名称": "", "主播": "", "平台": "", "RSS订阅": "", "总集数": "", "更新频率": ""
+  },
+  [NodeType.LIVESTREAM]: {
+    "直播间名称": "", "平台": "", "主播ID": "", "直播URL": "", "观众数": "", "直播时间": ""
+  },
+  [NodeType.FORUM_POST]: {
+    "帖子标题": "", "论坛": "", "发帖人": "", "发布时间": "", "URL": "", "回复数": ""
+  },
 
   // --- 4. FINANCIAL ---
   [NodeType.CRYPTO_WALLET]: {
@@ -95,6 +131,21 @@ export const ENTITY_DEFAULT_FIELDS: Partial<Record<NodeType, Record<string, stri
   },
   [NodeType.TRANSACTION]: {
     "交易ID": "", "时间": "", "金额": "", "发送方": "", "接收方": "", "备注": ""
+  },
+  [NodeType.INSURANCE_POLICY]: {
+    "保单号": "", "保险公司": "", "投保人": "", "受益人": "", "保额": "", "生效日期": "", "到期日期": ""
+  },
+  [NodeType.PROPERTY]: {
+    "产权证号": "", "地址": "", "产权人": "", "面积": "", "用途": "", "购买日期": "", "估值": ""
+  },
+  [NodeType.COMPANY_REGISTRATION]: {
+    "注册号": "", "公司名称": "", "法人": "", "注册资本": "", "注册地址": "", "经营范围": "", "成立日期": ""
+  },
+  [NodeType.PATENT]: {
+    "专利号": "", "专利名称": "", "申请人": "", "发明人": "", "申请日期": "", "授权日期": "", "类别": ""
+  },
+  [NodeType.TAX_RECORD]: {
+    "纳税人识别号": "", "纳税年度": "", "应纳税额": "", "已缴税额": "", "税务机关": ""
   },
 
   // --- 5. PHYSICAL WORLD ---
@@ -115,6 +166,21 @@ export const ENTITY_DEFAULT_FIELDS: Partial<Record<NodeType, Record<string, stri
   },
   [NodeType.SIM_CARD]: {
     "ICCID": "", "IMSI": "", "运营商": "", "状态": ""
+  },
+  [NodeType.LICENSE_PLATE]: {
+    "车牌号": "", "颜色": "", "车型": "", "注册地": "", "所有人": "", "注册时间": ""
+  },
+  [NodeType.BIOMETRIC]: {
+    "生物识别类型": "", "特征值": "", "采集时间": "", "采集设备": "", "质量评分": ""
+  },
+  [NodeType.DRONE]: {
+    "无人机型号": "", "注册号": "", "操作员": "", "飞行高度": "", "航线": "", "搭载设备": ""
+  },
+  [NodeType.SATELLITE_IMAGE]: {
+    "卫星名称": "", "拍摄时间": "", "分辨率": "", "覆盖区域": "", "坐标": "", "云层覆盖": ""
+  },
+  [NodeType.CCTV_FOOTAGE]: {
+    "摄像头ID": "", "位置": "", "录制时间": "", "时长": "", "分辨率": "", "视角": ""
   },
 
   // --- 6. TRAVEL & LOGISTICS (NEW) ---
@@ -168,6 +234,27 @@ export const ENTITY_DEFAULT_FIELDS: Partial<Record<NodeType, Record<string, stri
   [NodeType.PHISHING_KIT]: {
     "名称": "", "伪造品牌": "", "后台地址": "", "特征哈希": ""
   },
+  [NodeType.SCREENSHOT]: {
+    "文件内容": "", "截图时间": "", "应用/网页": "", "分辨率": "", "设备": ""
+  },
+  [NodeType.METADATA]: {
+    "元数据类型": "", "文件来源": "", "创建时间": "", "修改时间": "", "作者": "", "GPS坐标": ""
+  },
+  [NodeType.QR_CODE]: {
+    "二维码内容": "", "类型": "", "生成时间": "", "扫描次数": "", "失效时间": ""
+  },
+  [NodeType.BARCODE]: {
+    "条码类型": "", "条码值": "", "商品名称": "", "厂商": "", "生产日期": ""
+  },
+  [NodeType.ARTIFACT]: {
+    "证物类型": "", "提取时间": "", "提取来源": "", "哈希值": "", "取证工具": ""
+  },
+  [NodeType.PDF_DOCUMENT]: {
+    "文件名": "", "作者": "", "创建时间": "", "页数": "", "版本": "", "PDF哈希": ""
+  },
+  [NodeType.SPREADSHEET]: {
+    "文件名": "", "工作表数": "", "行数": "", "列数": "", "创建者": "", "修改时间": ""
+  },
 
   // --- 8. INTELLIGENCE COLLECTION (NEW) ---
   [NodeType.SOURCE_HUMINT]: {
@@ -216,6 +303,42 @@ export const ENTITY_DEFAULT_FIELDS: Partial<Record<NodeType, Record<string, stri
   },
   [NodeType.LEGAL_CASE]: {
     "案件编号": "", "法院": "", "案由": "", "当事人": "", "状态": ""
+  },
+  [NodeType.ATTACK_PATTERN]: {
+    "MITRE ATT&CK ID": "", "战术(Tactic)": "", "技术(Technique)": "", "描述": "", "防御方法": ""
+  },
+  [NodeType.INTRUSION_SET]: {
+    "入侵集合名称": "", "首次发现": "", "目标行业": "", "使用工具": "", "归属组织": ""
+  },
+  [NodeType.MALWARE_ANALYSIS]: {
+    "样本MD5": "", "分析工具": "", "行为特征": "", "网络活动": "", "文件操作": "", "注册表修改": ""
+  },
+  [NodeType.COURSE_OF_ACTION]: {
+    "应对措施名称": "", "类型": "", "实施步骤": "", "预期效果": "", "成本": ""
+  },
+  [NodeType.INDICATOR]: {
+    "指标类型": "", "指标值": "", "置信度": "", "首次发现": "", "最后出现": "", "关联威胁": ""
+  },
+  [NodeType.TOOL_SOFTWARE]: {
+    "工具名称": "", "版本": "", "用途": "", "开发者": "", "获取渠道": "", "使用组织": ""
+  },
+  [NodeType.OPINION]: {
+    "评估内容": "", "置信度": "", "评估人": "", "评估时间": "", "依据": ""
+  },
+  [NodeType.OBSERVED_DATA]: {
+    "观测类型": "", "观测时间": "", "观测源": "", "数据内容": "", "可信度": ""
+  },
+  [NodeType.COURT_RECORD]: {
+    "案号": "", "法院": "", "案由": "", "判决日期": "", "判决结果": "", "当事人": ""
+  },
+  [NodeType.EMPLOYMENT_RECORD]: {
+    "公司名称": "", "职位": "", "入职时间": "", "离职时间": "", "工作内容": "", "证明人": ""
+  },
+  [NodeType.EDUCATION_RECORD]: {
+    "学校名称": "", "学历": "", "专业": "", "入学时间": "", "毕业时间": "", "学位证书号": ""
+  },
+  [NodeType.MEDICAL_RECORD]: {
+    "医疗机构": "", "就诊时间": "", "诊断": "", "治疗方案": "", "主治医生": "", "病历号": ""
   },
 
   // --- 10. OPS ---

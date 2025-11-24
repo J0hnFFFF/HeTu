@@ -1,14 +1,16 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Search, Plus, Play, Save, Settings, Database, 
-  Terminal, Layers, Trash2, Edit3, Layout, Upload,
+import {
+  Search, Plus, Play, Save, Settings, Database,
+  Terminal, Layers, Trash2, Edit3, Upload,
   Box, Cpu, Shield, Key, Hash, FileJson, PlusCircle, X, Zap,
   User, Building2, Car, MapPin, Server, Globe, Network, Image as ImageIcon, Video, FileText, MessageSquare, Clock, RefreshCw,
   Paperclip, Eye, Download, Mic, Music, Bug, ShieldAlert, Radio, DatabaseZap, Archive, Globe2, Bot, Braces, BrainCircuit, Sliders,
   Ghost, Lock, CreditCard, Gavel, Cloud, Wifi, Smartphone, Fingerprint, Users,
   Satellite, Plane, BedDouble, Ship, IdCard, Ticket, Tent, Bomb, Fish, Router, Radar, Landmark, Activity,
-  Calendar, FileOutput, ChevronRight, AlertTriangle, CheckCircle2, AlertCircle, Info
+  Calendar, FileOutput, ChevronRight, AlertTriangle, CheckCircle2, AlertCircle, Info,
+  GitBranch, Folder, UserCog, Award, Target, Microscope, FileCheck, Gauge, Camera, QrCode, Barcode,
+  Package, FileSpreadsheet, Monitor, Scroll, Briefcase, GraduationCap, Heart, Home, Wrench, Podcast, Cast
 } from 'lucide-react';
 import { NodeType, IntelNode, Tool, LogEntry, ToolCategory, AIModelConfig } from '../types';
 import { ENTITY_DEFAULT_FIELDS, AI_MODELS } from '../constants';
@@ -27,7 +29,6 @@ interface ControlPanelProps {
   onImportData: (content: string, type: 'json' | 'text') => void;
   onSelectNode: (nodeId: string) => void;
   isProcessing: boolean;
-  onAutoLayout?: () => void;
   aiConfig: AIModelConfig;
   onUpdateAiConfig: (config: AIModelConfig) => void;
   onLog: (message: string, status?: LogEntry['status']) => void;
@@ -46,7 +47,6 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   onImportData,
   onSelectNode,
   isProcessing,
-  onAutoLayout,
   aiConfig,
   onUpdateAiConfig,
   onLog
@@ -915,6 +915,58 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                  {t: NodeType.LEAK_DUMP, l: '数据泄露', Icon: Archive},
                ]}
              />
+            <EntityCategory
+              title="威胁情报 (CTI/STIX)"
+              items={[
+                {t: NodeType.ATTACK_PATTERN, l: '攻击模式', Icon: Target},
+                {t: NodeType.INTRUSION_SET, l: '入侵集合', Icon: Shield},
+                {t: NodeType.MALWARE_ANALYSIS, l: '恶意软件分析', Icon: Microscope},
+                {t: NodeType.INDICATOR, l: 'IOC指标', Icon: Gauge},
+                {t: NodeType.TOOL_SOFTWARE, l: '工具软件', Icon: Wrench},
+                {t: NodeType.COURSE_OF_ACTION, l: '应对措施', Icon: ShieldAlert},
+              ]}
+            />
+            <EntityCategory
+              title="数字取证 (Forensics)"
+              items={[
+                {t: NodeType.SCREENSHOT, l: '截图', Icon: Monitor},
+                {t: NodeType.METADATA, l: '元数据', Icon: FileText},
+                {t: NodeType.QR_CODE, l: '二维码', Icon: QrCode},
+                {t: NodeType.BARCODE, l: '条形码', Icon: Barcode},
+                {t: NodeType.ARTIFACT, l: '数字证物', Icon: Package},
+                {t: NodeType.PDF_DOCUMENT, l: 'PDF文档', Icon: FileText},
+              ]}
+            />
+            <EntityCategory
+              title="背景调查 (Background)"
+              items={[
+                {t: NodeType.EMPLOYMENT_RECORD, l: '就业记录', Icon: Briefcase},
+                {t: NodeType.EDUCATION_RECORD, l: '教育记录', Icon: GraduationCap},
+                {t: NodeType.COURT_RECORD, l: '法庭记录', Icon: Gavel},
+                {t: NodeType.PROPERTY, l: '房产信息', Icon: Home},
+                {t: NodeType.PATENT, l: '专利商标', Icon: Scroll},
+                {t: NodeType.COMPANY_REGISTRATION, l: '公司注册', Icon: Building2},
+              ]}
+            />
+            <EntityCategory
+              title="物理监控 (Physical)"
+              items={[
+                {t: NodeType.LICENSE_PLATE, l: '车牌号', Icon: Car},
+                {t: NodeType.BIOMETRIC, l: '生物识别', Icon: Fingerprint},
+                {t: NodeType.CCTV_FOOTAGE, l: '监控录像', Icon: Camera},
+                {t: NodeType.SATELLITE_IMAGE, l: '卫星图像', Icon: Satellite},
+                {t: NodeType.DRONE, l: '无人机', Icon: Radar},
+              ]}
+            />
+            <EntityCategory
+              title="新媒体 (New Media)"
+              items={[
+                {t: NodeType.BLOG, l: '博客', Icon: FileText},
+                {t: NodeType.PODCAST, l: '播客', Icon: Podcast},
+                {t: NodeType.LIVESTREAM, l: '直播', Icon: Cast},
+                {t: NodeType.FORUM_POST, l: '论坛帖子', Icon: MessageSquare},
+              ]}
+            />
 
              <div className="space-y-2 pt-4 border-t border-slate-800">
                  <h3 className="text-[9px] uppercase font-bold text-slate-500 pl-1 flex items-center justify-between">
@@ -1156,16 +1208,6 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         >
           <Sliders className="w-4 h-4" />
         </button>
-
-        {onAutoLayout && (
-            <button 
-                onClick={onAutoLayout}
-                title="自动布局"
-                className="absolute right-2 top-14 p-1 bg-slate-800 hover:bg-cyan-900 text-slate-400 hover:text-cyan-400 rounded transition-colors z-10 border border-slate-700"
-            >
-                <Layout className="w-3 h-3" />
-            </button>
-        )}
       </div>
 
       <div className="flex-1 overflow-hidden bg-[#0e121b]">

@@ -590,5 +590,570 @@ export const DEFAULT_TOOLS: Tool[] = [
     promptTemplate: "构造 Google Dork (filetype:pdf OR filetype:xlsx OR filetype:docx) 搜索与该目标相关的文件。\n重点寻找：\n1. 内部通讯录。\n2. 财务报表。\n3. 招标文件。\n4. 包含 'Confidential' 或 'Internal Use Only' 的文件。",
     autoExpand: true,
     isSimulated: false
+  },
+
+  // ============================================
+  // SECTION: ENHANCED OSINT TOOLS (2025)
+  // ============================================
+
+  // --- Threat Intelligence ---
+  {
+    id: 'mcp_abuseipdb',
+    category: ToolCategory.MCP,
+    name: 'IP信誉检测 (AbuseIPDB)',
+    version: 'Live',
+    author: 'AbuseIPDB',
+    description: '【真实】查询IP地址的恶意活动记录、威胁评分和攻击类型',
+    targetTypes: [NodeType.IP_ADDRESS, NodeType.C2_SERVER, NodeType.SERVER],
+    mcpConfig: { functionName: 'googleSearch' },
+    promptTemplate: `搜索该IP地址在AbuseIPDB的威胁情报记录。
+重点查询：
+1. 该IP的滥用置信度评分（0-100）
+2. 报告的攻击类型（DDoS, 暴力破解, 扫描, 垃圾邮件等）
+3. 最近的恶意活动时间和频率
+4. IP归属的ISP和地理位置
+5. 是否被列入黑名单
+
+如果发现威胁记录，请创建以下实体：
+- 威胁评分作为节点属性
+- 相关的攻击类型创建为ATTACK_PATTERN节点
+- ISP信息创建为ORGANIZATION节点
+- 地理位置创建为GEO_LOCATION节点`,
+    autoExpand: true,
+    isSimulated: false
+  },
+
+  {
+    id: 'mcp_urlscan',
+    category: ToolCategory.MCP,
+    name: 'URL威胁扫描 (URLScan)',
+    version: 'Live',
+    author: 'URLScan.io',
+    description: '【真实】扫描URL并分析钓鱼、恶意脚本、重定向链',
+    targetTypes: [NodeType.URL, NodeType.DOMAIN, NodeType.PHISHING_KIT, NodeType.DARKWEB_SITE],
+    mcpConfig: { functionName: 'googleSearch' },
+    promptTemplate: `对该URL进行威胁扫描分析（通过URLScan.io公开数据）。
+检测内容：
+1. 钓鱼网站指标（伪装品牌、疑似登录表单）
+2. 恶意JavaScript代码或加密矿工脚本
+3. 重定向链和最终目标页面
+4. 页面中加载的第三方资源和追踪器
+5. SSL证书信息和域名注册时间
+6. 威胁分类（钓鱼/恶意软件/诈骗/安全）
+
+创建实体：
+- 如发现钓鱼，创建PHISHING_KIT节点并关联伪装的品牌
+- 恶意脚本创建CODE_SNIPPET节点
+- 最终重定向目标创建新URL节点
+- SSL证书创建SSL_CERT节点`,
+    autoExpand: true,
+    isSimulated: false
+  },
+
+  // --- Blockchain Analysis ---
+  {
+    id: 'mcp_blockchain_explorer',
+    category: ToolCategory.MCP,
+    name: '多链追踪 (Blockchain)',
+    version: 'Live',
+    author: 'Multi-Chain',
+    description: '【真实】追踪BTC/ETH/USDT等加密货币地址的交易和余额',
+    targetTypes: [NodeType.CRYPTO_WALLET, NodeType.TRANSACTION],
+    mcpConfig: { functionName: 'googleSearch' },
+    promptTemplate: `分析该加密货币地址的链上活动（通过Blockchain.com, Etherscan等公开数据）。
+查询内容：
+1. 当前余额和历史余额变化
+2. 交易历史（发送/接收的金额、时间、对手方地址）
+3. 地址标签和已知归属（交易所、混币器、DeFi协议）
+4. 首次/最近活跃时间
+5. 关联地址和资金流向
+6. 参与的智能合约交互
+
+提取实体：
+- 对手方地址创建新的CRYPTO_WALLET节点
+- 交易记录创建TRANSACTION节点
+- 交易所/服务创建ORGANIZATION节点
+- 智能合约创建TOOL_SOFTWARE节点
+- 如发现异常模式，创建INDICATOR节点
+
+注意识别地址类型：个人钱包/交易所地址/智能合约/混币器`,
+    autoExpand: true,
+    isSimulated: false
+  },
+
+  // --- Social Media Intelligence ---
+  {
+    id: 'mcp_twitter_intel',
+    category: ToolCategory.MCP,
+    name: 'X/Twitter 深度情报 (Live)',
+    version: 'Live',
+    author: 'Twitter OSINT',
+    description: '【真实】分析Twitter/X账号的推文历史、关注关系、互动网络',
+    targetTypes: [NodeType.SOCIAL_PROFILE, NodeType.ENTITY, NodeType.ORGANIZATION],
+    mcpConfig: { functionName: 'googleSearch' },
+    promptTemplate: `对该Twitter/X账号进行深度情报收集。
+分析维度：
+1. 账号基本信息（注册时间、关注数、粉丝数、认证状态）
+2. 推文内容分析（关键词、话题标签、情感倾向）
+3. 活跃时间规律（判断时区和作息习惯）
+4. 互动网络（频繁@的账号、转发来源）
+5. 关联线索（简介中的链接、提及的组织/地点）
+6. 历史推文中的敏感信息（位置泄露、个人信息）
+
+提取实体：
+- 频繁互动的账号创建SOCIAL_PROFILE节点
+- 提及的组织创建ORGANIZATION节点
+- 地理位置信息创建GEO_LOCATION节点
+- 个人信息创建ENTITY节点
+- 重要推文创建SOCIAL_POST节点
+
+注意：
+- 判断账号是真人还是机器人
+- 识别可能的多账号操作模式
+- 分析情感变化和异常行为`,
+    autoExpand: true,
+    isSimulated: false
+  },
+
+  // --- Digital Forensics ---
+  {
+    id: 'agent_exif_extractor',
+    category: ToolCategory.AGENT,
+    name: 'EXIF深度分析 (Metadata)',
+    version: '2.0',
+    author: 'Forensics Lab',
+    description: '【真实】从图片中提取GPS坐标、拍摄设备、编辑软件等元数据',
+    targetTypes: [NodeType.IMAGE, NodeType.METADATA, NodeType.SCREENSHOT],
+    promptTemplate: `作为数字取证专家，深度分析该图片的EXIF元数据和隐藏信息。
+
+分析项目：
+1. **GPS定位**
+   - 精确GPS坐标（纬度/经度）
+   - 海拔高度
+   - 如有坐标，反向地理编码得出具体地址
+
+2. **拍摄设备指纹**
+   - 相机/手机品牌和型号
+   - 镜头信息
+   - 设备序列号（如果存在）
+
+3. **拍摄参数**
+   - 拍摄日期和时间（注意时区）
+   - 曝光参数（光圈、快门、ISO）
+   - 白平衡、闪光灯使用
+
+4. **软件痕迹**
+   - 图片编辑软件（Photoshop, GIMP等）
+   - 编辑时间和版本
+   - 缩略图中的原始信息
+
+5. **隐藏信息**
+   - Copyright和作者信息
+   - 评论字段中的备注
+   - 用户自定义标签
+
+6. **异常检测**
+   - 元数据是否被篡改或删除
+   - 拍摄时间与文件时间的差异
+   - GPS坐标与场景内容的一致性
+
+创建实体：
+- GPS坐标创建GEO_LOCATION节点
+- 拍摄设备创建DEVICE节点
+- 如发现作者信息创建ENTITY节点
+- 元数据本身创建METADATA节点
+- 如检测到篡改创建INDICATOR节点
+
+输出格式：
+以结构化方式列出所有元数据字段，标注重要发现和潜在线索。`,
+    autoExpand: true,
+    isSimulated: false
+  },
+
+  // ============================================
+  // SECTION: MEDIUM PRIORITY TOOLS
+  // ============================================
+
+  // --- Enhanced Threat Intelligence ---
+  {
+    id: 'mcp_otx_threat',
+    category: ToolCategory.MCP,
+    name: '威胁脉冲 (AlienVault OTX)',
+    version: 'Live',
+    author: 'AlienVault',
+    description: '【真实】查询AlienVault开放威胁交换平台的IOC和攻击活动',
+    targetTypes: [NodeType.IP_ADDRESS, NodeType.DOMAIN, NodeType.FILE_HASH, NodeType.URL, NodeType.MALWARE],
+    mcpConfig: { functionName: 'googleSearch' },
+    promptTemplate: `查询该IOC在AlienVault OTX威胁情报平台的关联信息。
+
+搜索重点：
+1. **威胁脉冲 (Pulses)**
+   - 该IOC出现在哪些威胁脉冲中
+   - 脉冲的标题、描述和标签
+   - 脉冲的创建者和发布时间
+   - 置信度和严重性评级
+
+2. **攻击活动关联**
+   - 关联的APT组织或威胁行为者
+   - 攻击战役名称和时间线
+   - 攻击目标行业和地理区域
+   - 使用的TTPs (战术、技术、过程)
+
+3. **相关IOCs**
+   - 同一脉冲中的其他指标
+   - IP地址、域名、哈希值的关联
+   - C2服务器和恶意软件样本
+   - 钓鱼域名和URL
+
+4. **历史活动**
+   - 首次/最近观测时间
+   - 活跃时间段和频率
+   - 行为模式变化
+
+5. **MITRE ATT&CK映射**
+   - 对应的ATT&CK技术ID
+   - 战术阶段（初始访问、执行、持久化等）
+
+创建实体：
+- 威胁行为者创建THREAT_ACTOR节点
+- 攻击战役创建CAMPAIGN节点
+- 相关IOC创建对应类型节点（IP/域名/哈希）
+- ATT&CK技术创建ATTACK_PATTERN节点
+- 恶意软件创建MALWARE节点
+- 脉冲本身创建REPORT节点
+
+输出结构：
+按时间顺序列出相关脉冲，标注高危威胁和需要重点关注的关联。`,
+    autoExpand: true,
+    isSimulated: false
+  },
+
+  // --- Corporate Intelligence ---
+  {
+    id: 'mcp_company_graph',
+    category: ToolCategory.MCP,
+    name: '企业关系网 (Corporate Tree)',
+    version: 'Live',
+    author: 'OpenCorporates',
+    description: '【真实】分析企业股权结构、高管关系、子公司和关联企业',
+    targetTypes: [NodeType.ORGANIZATION, NodeType.COMPANY_REGISTRATION],
+    mcpConfig: { functionName: 'googleSearch' },
+    promptTemplate: `深度挖掘该企业的股权结构和关系网络（通过企查查、天眼查、OpenCorporates等公开数据）。
+
+调查维度：
+
+1. **基本工商信息**
+   - 统一社会信用代码/注册号
+   - 法定代表人和实际控制人
+   - 注册资本和实缴资本
+   - 成立日期和营业期限
+   - 注册地址和经营范围
+
+2. **股权结构穿透**
+   - 股东列表和持股比例
+   - 股权穿透至自然人和最终受益人
+   - 股权质押和冻结情况
+   - 历史股权变更记录
+
+3. **对外投资**
+   - 控股子公司列表
+   - 参股公司和投资比例
+   - 投资行业分布
+   - 投资时间线
+
+4. **高管团队**
+   - 董事、监事、高管名单
+   - 高管在其他公司的任职
+   - 高管变更历史
+   - 关键人物背景
+
+5. **企业关联**
+   - 同一实控人的其他企业
+   - 关联交易对手
+   - 供应商和客户关系
+   - 竞争对手识别
+
+6. **风险预警**
+   - 法律诉讼和仲裁
+   - 行政处罚
+   - 经营异常
+   - 税务违规
+   - 失信被执行
+
+7. **资质与荣誉**
+   - 行业资质和许可证
+   - 知识产权（专利、商标）
+   - 认证证书
+   - 获奖记录
+
+创建实体：
+- 股东创建ENTITY或ORGANIZATION节点
+- 高管创建ENTITY节点
+- 子公司创建ORGANIZATION节点
+- 实控人创建ENTITY节点
+- 关联企业创建ORGANIZATION节点
+- 法律诉讼创建LEGAL_CASE节点
+- 专利商标创建PATENT节点
+
+关系标注：
+- 使用"持股X%"、"法定代表人"、"实际控制"等标签
+- 标注关系建立时间和当前状态
+
+输出格式：
+生成企业关系图谱，突出核心控制链和风险点。`,
+    autoExpand: true,
+    isSimulated: false
+  },
+
+  // --- Community Intelligence ---
+  {
+    id: 'mcp_discord_recon',
+    category: ToolCategory.MCP,
+    name: 'Discord 社区情报 (Live)',
+    version: 'Live',
+    author: 'Discord OSINT',
+    description: '【真实】搜索Discord公开服务器和讨论内容',
+    targetTypes: [NodeType.ORGANIZATION, NodeType.THREAT_ACTOR, NodeType.SOCIAL_PROFILE, NodeType.APP],
+    mcpConfig: { functionName: 'googleSearch' },
+    promptTemplate: `对该目标在Discord平台的社区活动进行情报收集。
+
+调查内容：
+
+1. **服务器发现**
+   - 与目标相关的Discord服务器
+   - 服务器名称、描述和邀请链接
+   - 服务器成员数估算（如有公开数据）
+   - 创建时间和验证级别
+
+2. **社区分析**
+   - 服务器的主要讨论话题
+   - 活跃频道和热门内容
+   - 公告和置顶消息
+   - 社区规则和管理方式
+
+3. **成员构成**
+   - 关键管理员和版主
+   - 活跃用户和意见领袖
+   - 机器人使用情况
+   - 用户角色和权限结构
+
+4. **内容监控**
+   - 敏感讨论和情报线索
+   - 技术交流（工具、方法）
+   - 交易信息（如涉及）
+   - 计划中的活动或事件
+
+5. **关联分析**
+   - 其他相关Discord服务器
+   - 跨平台账号关联（Twitter, GitHub等）
+   - 外部链接和资源
+   - 合作伙伴和友链
+
+6. **威胁评估**（如适用）
+   - 可疑活动指标
+   - 违规内容类型
+   - 潜在的协同攻击计划
+   - 社会工程或钓鱼企图
+
+7. **时间戳分析**
+   - 社区活跃时间段
+   - 重大事件时间线
+   - 成员增长趋势
+
+创建实体：
+- 服务器创建APP节点（Discord Server）
+- 管理员创建ENTITY或SOCIAL_PROFILE节点
+- 关联组织创建ORGANIZATION节点
+- 如发现威胁创建THREAT_ACTOR节点
+- 重要讨论创建NOTE或REPORT节点
+- 外部链接创建URL节点
+
+输出重点：
+识别社区的真实目的、风险等级和关键人物。
+
+注意：
+仅收集公开可访问的信息，遵守Discord服务条款。`,
+    autoExpand: true,
+    isSimulated: false
+  },
+
+  // --- Maritime Intelligence ---
+  {
+    id: 'mcp_vessel_tracker',
+    category: ToolCategory.MCP,
+    name: '船舶追踪 (AIS)',
+    version: 'Live',
+    author: 'MarineTraffic',
+    description: '【真实】追踪商船实时位置、航线历史和港口停靠',
+    targetTypes: [NodeType.SHIPPING, NodeType.VEHICLE, NodeType.ORGANIZATION],
+    mcpConfig: { functionName: 'googleSearch' },
+    promptTemplate: `追踪该船舶的AIS信号和航运情报（通过VesselFinder, MarineTraffic公开数据）。
+
+查询内容：
+
+1. **船舶身份**
+   - 船名 (Vessel Name)
+   - IMO编号（国际海事组织识别号）
+   - MMSI号码（海上移动通信识别码）
+   - 呼号 (Call Sign)
+   - 船旗国 (Flag)
+
+2. **船舶规格**
+   - 船舶类型（货船、油轮、集装箱船、客船等）
+   - 船龄和建造年份
+   - 总吨位 (Gross Tonnage)
+   - 载重吨位 (Deadweight)
+   - 船长、船宽、吃水
+   - 发动机功率
+
+3. **所有权信息**
+   - 船东公司
+   - 运营商
+   - 管理公司
+   - 租赁状态
+
+4. **实时位置**
+   - 当前经纬度坐标
+   - 航速和航向
+   - 目的港
+   - 预计到达时间 (ETA)
+   - 航行状态（航行中、停泊、锚泊）
+
+5. **航线历史**
+   - 过去30天的航迹
+   - 停靠过的港口列表
+   - 在港停留时间
+   - 航线模式分析
+
+6. **港口活动**
+   - 当前停靠港口
+   - 靠泊位置和码头
+   - 装卸货物类型（如有公开信息）
+   - 进出港时间
+
+7. **安全与合规**
+   - 船级社和认证
+   - 检查记录（PSC - 港口国监督）
+   - 缺陷和滞留记录
+   - 事故历史
+
+8. **制裁检查**
+   - 是否在制裁名单
+   - 疑似违规活动
+   - 转运或"暗舱"行为
+
+创建实体：
+- 船舶创建VEHICLE节点
+- 船东/运营商创建ORGANIZATION节点
+- 停靠港口创建GEO_LOCATION节点
+- 当前位置创建GEO_LOCATION节点
+- 航线历史创建EVENT节点
+- 如发现异常创建INDICATOR节点
+
+关系标注：
+- "拥有"、"运营"、"停靠"、"航向"等关系
+
+输出格式：
+生成航运时间线和地理路径图。
+
+应用场景：
+- 货物追踪
+- 供应链分析
+- 制裁监控
+- 地缘政治情报`,
+    autoExpand: true,
+    isSimulated: false
+  },
+
+  // --- Web3 Intelligence ---
+  {
+    id: 'mcp_nft_tracker',
+    category: ToolCategory.MCP,
+    name: 'NFT持有分析 (OpenSea)',
+    version: 'Live',
+    author: 'NFT Analytics',
+    description: '【真实】查询钱包持有的NFT资产和交易记录',
+    targetTypes: [NodeType.CRYPTO_WALLET, NodeType.ENTITY],
+    mcpConfig: { functionName: 'googleSearch' },
+    promptTemplate: `分析该以太坊地址的NFT持仓和交易活动（通过OpenSea, LooksRare等公开数据）。
+
+分析维度：
+
+1. **NFT持仓概览**
+   - 持有的NFT总数量
+   - 总价值估算（以ETH计）
+   - 持有的项目/系列数量
+   - 蓝筹NFT占比
+
+2. **项目明细**
+   - 每个NFT项目的名称
+   - 持有数量
+   - 地板价和估值
+   - 稀有度排名（如有）
+   - Token ID列表
+
+3. **重点项目识别**
+   - BAYC (无聊猿)
+   - CryptoPunks
+   - Azuki
+   - Doodles
+   - 其他知名蓝筹项目
+
+4. **交易历史**
+   - 最近的NFT购买记录
+   - Mint（铸造）活动
+   - 出售和转让记录
+   - 交易频率和模式
+
+5. **交易行为分析**
+   - 是收藏家还是交易者
+   - 持仓时长（长期持有 vs 快速翻转）
+   - 盈亏估算
+   - 交易对手方识别
+
+6. **市场参与**
+   - 参与的NFT Mint活动
+   - 白名单资格
+   - 社区参与度
+   - DAO投票活动
+
+7. **跨链NFT**
+   - Polygon上的NFT
+   - Solana生态（需要地址转换）
+   - 其他链的资产
+
+8. **关联分析**
+   - ENS域名（如有）
+   - POAP徽章（活动证明）
+   - 社交图谱（Lens Protocol等）
+   - 关注的项目和创作者
+
+9. **风险指标**
+   - 是否持有已被标记为scam的项目
+   - 可疑的洗盘交易
+   - 高风险项目占比
+
+创建实体：
+- 每个重要NFT项目创建ORGANIZATION节点
+- NFT创作者创建ENTITY节点
+- 交易记录创建TRANSACTION节点
+- 如发现知名收藏家创建ENTITY节点
+- ENS域名创建IDENTITY节点
+- POAP创建ARTIFACT节点
+
+关系标注：
+- "持有X个"、"在Y价格购买"、"来自Z项目"
+
+输出格式：
+生成NFT资产表和交易时间线。
+
+应用场景：
+- 高净值个人识别
+- NFT项目调查
+- 洗钱追踪
+- 社区影响力评估
+- Web3身份画像`,
+    autoExpand: true,
+    isSimulated: false
   }
 ];

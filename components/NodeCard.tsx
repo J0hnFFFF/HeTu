@@ -2,15 +2,19 @@
 
 import React from 'react';
 import { IntelNode, NodeType } from '../types';
-import { 
-  User, Globe, Image as ImageIcon, FileText, 
+import {
+  User, Globe, Image as ImageIcon, FileText,
   Link2, Network, Server, MapPin, Hash, Database, AtSign, Loader2,
   Building2, Car, Video, Mic, MessageSquare, File, Paperclip, Music,
   Bug, ShieldAlert, Search, DatabaseZap, Radio, Archive, Scan,
-  Ghost, Fingerprint, Cloud, Wifi, CreditCard, Smartphone, Tablet, 
+  Ghost, Fingerprint, Cloud, Wifi, CreditCard, Smartphone, Tablet,
   Sword, Cpu, Newspaper, Code, Calendar, Flag, Lightbulb, Gavel, Lock,
   Landmark, Bitcoin, Activity, AppWindow, Users, Ear, Satellite, ScanFace,
-  Plane, BedDouble, Ship, IdCard, Ticket, Tent, Bomb, Fish, Router
+  Plane, BedDouble, Ship, IdCard, Ticket, Tent, Bomb, Fish, Router,
+  GitBranch, Waves, Play, Folder, UserCog, Award, Shield, Target,
+  Microscope, FileCheck, Eye, Gauge, Camera, QrCode, Barcode, Package,
+  FileSpreadsheet, Monitor, Key, Scroll, Briefcase, GraduationCap, Heart,
+  Home, Shield as ShieldIcon, Wrench, FileArchive, Settings, Podcast, Cast
 } from 'lucide-react';
 
 interface NodeCardProps {
@@ -47,6 +51,14 @@ export const NodeCard: React.FC<NodeCardProps> = ({
       case NodeType.WIFI: return <Wifi className="w-4 h-4 text-amber-400" />;
       case NodeType.SSL_CERT: return <Lock className="w-4 h-4 text-yellow-200" />;
       case NodeType.ASN: return <Network className="w-4 h-4 text-indigo-400" />;
+      case NodeType.INFRASTRUCTURE: return <GitBranch className="w-4 h-4 text-slate-400" />;
+      case NodeType.NETWORK_TRAFFIC: return <Waves className="w-4 h-4 text-blue-500" />;
+      case NodeType.PROCESS: return <Play className="w-4 h-4 text-green-400" />;
+      case NodeType.MUTEX: return <Key className="w-4 h-4 text-orange-400" />;
+      case NodeType.REGISTRY_KEY: return <Settings className="w-4 h-4 text-purple-400" />;
+      case NodeType.DIRECTORY: return <Folder className="w-4 h-4 text-yellow-400" />;
+      case NodeType.USER_ACCOUNT: return <UserCog className="w-4 h-4 text-cyan-400" />;
+      case NodeType.X509_CERTIFICATE: return <Award className="w-4 h-4 text-indigo-400" />;
 
       // 3. COMMUNICATION
       case NodeType.EMAIL: return <AtSign className="w-4 h-4 text-orange-300" />;
@@ -55,12 +67,21 @@ export const NodeCard: React.FC<NodeCardProps> = ({
       case NodeType.MESSAGING_ID: return <MessageSquare className="w-4 h-4 text-blue-400" />;
       case NodeType.FORUM_ACCOUNT: return <User className="w-4 h-4 text-slate-500" />;
       case NodeType.APP: return <AppWindow className="w-4 h-4 text-teal-400" />;
+      case NodeType.BLOG: return <FileText className="w-4 h-4 text-blue-400" />;
+      case NodeType.PODCAST: return <Podcast className="w-4 h-4 text-purple-400" />;
+      case NodeType.LIVESTREAM: return <Cast className="w-4 h-4 text-red-400" />;
+      case NodeType.FORUM_POST: return <MessageSquare className="w-4 h-4 text-slate-400" />;
 
       // 4. FINANCIAL
       case NodeType.CRYPTO_WALLET: return <Bitcoin className="w-4 h-4 text-amber-500" />;
       case NodeType.BANK_ACCOUNT: return <Landmark className="w-4 h-4 text-emerald-600" />;
       case NodeType.CREDIT_CARD: return <CreditCard className="w-4 h-4 text-blue-500" />;
       case NodeType.TRANSACTION: return <Activity className="w-4 h-4 text-slate-400" />;
+      case NodeType.INSURANCE_POLICY: return <ShieldIcon className="w-4 h-4 text-blue-600" />;
+      case NodeType.PROPERTY: return <Home className="w-4 h-4 text-orange-500" />;
+      case NodeType.COMPANY_REGISTRATION: return <Building2 className="w-4 h-4 text-purple-500" />;
+      case NodeType.PATENT: return <Scroll className="w-4 h-4 text-teal-500" />;
+      case NodeType.TAX_RECORD: return <FileText className="w-4 h-4 text-green-600" />;
 
       // 5. PHYSICAL
       case NodeType.GEO_LOCATION: return <MapPin className="w-4 h-4 text-red-500" />;
@@ -69,6 +90,11 @@ export const NodeCard: React.FC<NodeCardProps> = ({
       case NodeType.DEVICE: return <Tablet className="w-4 h-4 text-slate-300" />;
       case NodeType.WEAPON: return <Sword className="w-4 h-4 text-red-700" />;
       case NodeType.SIM_CARD: return <Cpu className="w-4 h-4 text-yellow-600" />;
+      case NodeType.LICENSE_PLATE: return <Car className="w-4 h-4 text-blue-400" />;
+      case NodeType.BIOMETRIC: return <Fingerprint className="w-4 h-4 text-purple-500" />;
+      case NodeType.DRONE: return <Plane className="w-4 h-4 text-sky-500" />;
+      case NodeType.SATELLITE_IMAGE: return <Satellite className="w-4 h-4 text-indigo-500" />;
+      case NodeType.CCTV_FOOTAGE: return <Camera className="w-4 h-4 text-slate-500" />;
 
       // 6. TRAVEL & LOGISTICS (NEW)
       case NodeType.FLIGHT: return <Plane className="w-4 h-4 text-sky-400" />;
@@ -89,6 +115,13 @@ export const NodeCard: React.FC<NodeCardProps> = ({
       case NodeType.FILE_HASH: return <Hash className="w-4 h-4 text-slate-500" />;
       case NodeType.EXPLOIT: return <Bomb className="w-4 h-4 text-red-600" />;
       case NodeType.PHISHING_KIT: return <Fish className="w-4 h-4 text-orange-500" />;
+      case NodeType.SCREENSHOT: return <Monitor className="w-4 h-4 text-blue-400" />;
+      case NodeType.METADATA: return <FileArchive className="w-4 h-4 text-slate-400" />;
+      case NodeType.QR_CODE: return <QrCode className="w-4 h-4 text-purple-500" />;
+      case NodeType.BARCODE: return <Barcode className="w-4 h-4 text-slate-500" />;
+      case NodeType.ARTIFACT: return <Package className="w-4 h-4 text-amber-500" />;
+      case NodeType.PDF_DOCUMENT: return <FileText className="w-4 h-4 text-red-400" />;
+      case NodeType.SPREADSHEET: return <FileSpreadsheet className="w-4 h-4 text-green-400" />;
 
       // 8. INTELLIGENCE COLLECTION (NEW)
       case NodeType.SOURCE_HUMINT: return <User className="w-4 h-4 text-orange-500" />;
@@ -108,6 +141,18 @@ export const NodeCard: React.FC<NodeCardProps> = ({
       case NodeType.TOPIC: return <Hash className="w-4 h-4 text-pink-500" />;
       case NodeType.HYPOTHESIS: return <Lightbulb className="w-4 h-4 text-yellow-300" />;
       case NodeType.LEGAL_CASE: return <Gavel className="w-4 h-4 text-slate-200" />;
+      case NodeType.ATTACK_PATTERN: return <Target className="w-4 h-4 text-red-500" />;
+      case NodeType.INTRUSION_SET: return <Shield className="w-4 h-4 text-orange-500" />;
+      case NodeType.MALWARE_ANALYSIS: return <Microscope className="w-4 h-4 text-purple-500" />;
+      case NodeType.COURSE_OF_ACTION: return <ShieldIcon className="w-4 h-4 text-green-500" />;
+      case NodeType.INDICATOR: return <Gauge className="w-4 h-4 text-cyan-500" />;
+      case NodeType.TOOL_SOFTWARE: return <Wrench className="w-4 h-4 text-slate-400" />;
+      case NodeType.OPINION: return <Eye className="w-4 h-4 text-indigo-400" />;
+      case NodeType.OBSERVED_DATA: return <FileCheck className="w-4 h-4 text-teal-400" />;
+      case NodeType.COURT_RECORD: return <Gavel className="w-4 h-4 text-amber-500" />;
+      case NodeType.EMPLOYMENT_RECORD: return <Briefcase className="w-4 h-4 text-blue-500" />;
+      case NodeType.EDUCATION_RECORD: return <GraduationCap className="w-4 h-4 text-purple-500" />;
+      case NodeType.MEDICAL_RECORD: return <Heart className="w-4 h-4 text-red-400" />;
 
       // 10. OPS
       case NodeType.SEARCH_QUERY: return <Search className="w-4 h-4 text-teal-400" />;

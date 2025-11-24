@@ -7,7 +7,7 @@ import { IntelNode, Connection, NodeType, Position, LogEntry, Tool, AIModelConfi
 import { executeTool } from './services/geminiService';
 import { ENTITY_DEFAULT_FIELDS } from './constants';
 import { DEFAULT_TOOLS } from './tools';
-import { Search } from 'lucide-react';
+import { Search, Layout } from 'lucide-react';
 
 const uuid = () => Math.random().toString(36).substr(2, 9);
 
@@ -44,18 +44,28 @@ const App: React.FC = () => {
 
   // Logging
   const addLog = useCallback((action: string, status: LogEntry['status'] = 'info') => {
-    setLogs(prev => [{ id: uuid(), timestamp: new Date(), action, status }, ...prev].slice(200));
+    const newLog = { id: uuid(), timestamp: new Date(), action, status };
+    console.log('[LOG]', newLog); // Debug: 确认日志被调用
+    setLogs(prev => [newLog, ...prev].slice(0, 200));
   }, []);
 
   // --- Core Graph Operations ---
   
   const deleteNodes = useCallback((nodeIds: string[]) => {
     if (nodeIds.length === 0) return;
-    
+
+    const deletedNodes = nodesRef.current.filter(n => nodeIds.includes(n.id));
+    const nodeNames = deletedNodes.map(n => n.title).join(', ');
+
     setNodes(prev => prev.filter(n => !nodeIds.includes(n.id)));
     setConnections(prev => prev.filter(c => !nodeIds.includes(c.sourceId) && !nodeIds.includes(c.targetId)));
     setSelectedNodeIds([]);
-    addLog(`删除了 ${nodeIds.length} 个实体`, 'warning');
+
+    if (deletedNodes.length === 1) {
+      addLog(`🗑️ 删除节点: ${nodeNames} (${deletedNodes[0].type})`, 'warning');
+    } else {
+      addLog(`🗑️ 批量删除 ${deletedNodes.length} 个节点: ${nodeNames}`, 'warning');
+    }
     setContextMenu(null);
   }, [addLog]);
 
@@ -133,7 +143,7 @@ const App: React.FC = () => {
     };
     setNodes(prev => [...prev, newNode]);
     setSelectedNodeIds([newNode.id]);
-    addLog(`创建了新节点: ${type}`, 'info');
+    addLog(`➕ 创建新节点: ${newNode.title} (${type})`, 'info');
   }, [addLog]);
 
   const updateNode = useCallback((id: string, data: Partial<IntelNode>) => {
@@ -145,8 +155,14 @@ const App: React.FC = () => {
   };
 
   const handleConnect = useCallback((sourceId: string, targetId: string) => {
+    const sourceNode = nodesRef.current.find(n => n.id === sourceId);
+    const targetNode = nodesRef.current.find(n => n.id === targetId);
     setConnections(prev => [...prev, { id: uuid(), sourceId, targetId }]);
-    addLog('创建了新的手动连接', 'info');
+    if (sourceNode && targetNode) {
+      addLog(`创建连接: [${sourceNode.title}] → [${targetNode.title}]`, 'info');
+    } else {
+      addLog('创建了新的手动连接', 'info');
+    }
   }, [addLog]);
 
   const handleMoveNodes = useCallback((delta: Position) => {
@@ -201,18 +217,21 @@ const App: React.FC = () => {
   // --- Analysis Engine ---
 
   const runToolOnNode = async (tool: Tool, node: IntelNode): Promise<IntelNode[]> => {
-     setNodeStatus([node.id], 'PROCESSING'); 
-     addLog(`开始执行任务 [${tool.name}] 目标: ${node.title}...`, 'info');
-     
+     setNodeStatus([node.id], 'PROCESSING');
+     addLog(`🔄 执行工具 [${tool.name}] → 目标: ${node.title} (${node.type})`, 'info');
+
      try {
         // Pass aiConfig to the service execution
         const result = await executeTool(tool, node, nodesRef.current, aiConfig);
-        
+
+        // Log property updates
         if (result.updateData) {
-            updateNode(node.id, { 
+            const updatedKeys = Object.keys(result.updateData);
+            updateNode(node.id, {
                 data: { ...node.data, ...result.updateData },
                 status: 'PROCESSED'
             });
+            addLog(`✓ [${node.title}] 属性已更新: ${updatedKeys.join(', ')}`, 'success');
         } else {
             setNodeStatus([node.id], 'PROCESSED');
         }
@@ -221,24 +240,30 @@ const App: React.FC = () => {
             const enhancedNewNodes = result.newNodes.map((n, idx) => ({
                 ...n,
                 depth: node.depth + 1,
-                position: { 
-                    x: node.position.x + 350, 
-                    y: node.position.y + (idx * 150) 
+                position: {
+                    x: node.position.x + 350,
+                    y: node.position.y + (idx * 150)
                 }
             }));
 
             setNodes(prev => [...prev, ...enhancedNewNodes]);
             setConnections(prev => [...prev, ...result.newConnections]);
-            addLog(`[${tool.name}] 完成: 发现 ${result.newNodes.length} 个新线索`, 'success');
-            
+
+            // Log each new discovered entity
+            const entityNames = enhancedNewNodes.map(n => `${n.title} (${n.type})`).join(', ');
+            addLog(`✓ [${tool.name}] 成功: 发现 ${result.newNodes.length} 个新实体 → ${entityNames}`, 'success');
+
             return enhancedNewNodes;
         } else {
-            addLog(`[${tool.name}] 完成: 无新增实体，仅更新属性`, 'success');
+            addLog(`✓ [${tool.name}] 执行完成: 分析了 [${node.title}]，未发现新实体`, 'success');
             return [];
         }
-     } catch (e) {
-        addLog(`插件执行失败 [${tool.name}]: ${e}`, 'error');
+     } catch (e: any) {
+        const errorMsg = e?.message || String(e);
+        const errorDetail = errorMsg.length > 100 ? errorMsg.substring(0, 100) + '...' : errorMsg;
+        addLog(`✗ [${tool.name}] 执行失败 @ [${node.title}]: ${errorDetail}`, 'error');
         setNodeStatus([node.id], 'ERROR');
+        console.error(`Tool execution error [${tool.name}]:`, e);
         return [];
      }
   };
@@ -246,10 +271,19 @@ const App: React.FC = () => {
   const handleRunTool = async (tool: Tool, targetNodes: IntelNode[]) => {
     setIsProcessing(true);
     setContextMenu(null);
-    
+
+    if (targetNodes.length > 1) {
+      addLog(`📦 批量执行工具 [${tool.name}] → ${targetNodes.length} 个目标节点`, 'info');
+    }
+
     for (const node of targetNodes) {
         await runToolOnNode(tool, node);
     }
+
+    if (targetNodes.length > 1) {
+      addLog(`✓ 批量执行完成 [${tool.name}]`, 'success');
+    }
+
     setTimeout(performAutoLayout, 100);
     setIsProcessing(false);
   };
@@ -289,7 +323,7 @@ const App: React.FC = () => {
 
           <div className="bg-slate-900/90 backdrop-blur border border-slate-700 rounded shadow-lg flex items-center h-[50px] w-[300px] px-3 focus-within:border-cyan-500 transition-colors">
               <Search className="w-4 h-4 text-slate-500 mr-2" />
-              <input 
+              <input
                   className="bg-transparent border-none outline-none text-sm text-slate-200 placeholder:text-slate-600 w-full"
                   placeholder="全局指令 / 搜索实体..."
                   value={searchTerm}
@@ -297,6 +331,14 @@ const App: React.FC = () => {
                   onBlur={() => { if(searchTerm) addLog(`执行全局搜索: "${searchTerm}"`, 'info') }}
               />
           </div>
+
+          <button
+              onClick={performAutoLayout}
+              title="自动布局 / Auto Layout"
+              className="bg-slate-900/90 backdrop-blur border border-slate-700 hover:border-cyan-500 rounded shadow-lg h-[50px] w-[50px] flex items-center justify-center transition-all hover:bg-cyan-900/20 group"
+          >
+              <Layout className="w-5 h-5 text-slate-400 group-hover:text-cyan-400 transition-colors" />
+          </button>
        </div>
 
        {/* Canvas */}
@@ -336,7 +378,7 @@ const App: React.FC = () => {
        </div>
 
        {/* Right Sidebar */}
-       <ControlPanel 
+       <ControlPanel
          selectedNodes={nodes.filter(n => selectedNodeIds.includes(n.id))}
          allNodes={nodes}
          allTools={tools}
@@ -349,7 +391,6 @@ const App: React.FC = () => {
          onImportData={handleImportData}
          onSelectNode={(id) => handleSelectionChange([id])}
          isProcessing={isProcessing}
-         onAutoLayout={performAutoLayout}
          aiConfig={aiConfig}
          onUpdateAiConfig={handleUpdateAiConfig}
          onLog={addLog}

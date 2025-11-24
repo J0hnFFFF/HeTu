@@ -14,35 +14,57 @@ export enum NodeType {
   MAC_ADDRESS = 'MAC_ADDRESS',
   DOMAIN = 'DOMAIN',
   URL = 'URL',
-  SERVER = 'SERVER', 
-  C2_SERVER = 'C2_SERVER', // New: Command & Control
-  CLOUD_SERVICE = 'CLOUD_SERVICE', 
-  WIFI = 'WIFI', 
+  SERVER = 'SERVER',
+  C2_SERVER = 'C2_SERVER', // Command & Control
+  CLOUD_SERVICE = 'CLOUD_SERVICE',
+  WIFI = 'WIFI',
   ASN = 'ASN',
   SSL_CERT = 'SSL_CERT',
-  BOTNET = 'BOTNET', // New
+  BOTNET = 'BOTNET',
+  INFRASTRUCTURE = 'INFRASTRUCTURE', // General Infrastructure
+  NETWORK_TRAFFIC = 'NETWORK_TRAFFIC', // Network Flow
+  PROCESS = 'PROCESS', // System Process
+  MUTEX = 'MUTEX', // Mutex Object
+  REGISTRY_KEY = 'REGISTRY_KEY', // Windows Registry
+  DIRECTORY = 'DIRECTORY', // File Directory
+  USER_ACCOUNT = 'USER_ACCOUNT', // System User Account
+  X509_CERTIFICATE = 'X509_CERTIFICATE', // Digital Certificate
   
   // --- 3. COMMUNICATION & ACCOUNTS (通讯与账号) ---
   EMAIL = 'EMAIL',
   PHONE_NUMBER = 'PHONE_NUMBER',
   SOCIAL_PROFILE = 'SOCIAL_PROFILE',
-  MESSAGING_ID = 'MESSAGING_ID', 
-  FORUM_ACCOUNT = 'FORUM_ACCOUNT', 
-  APP = 'APP', 
+  MESSAGING_ID = 'MESSAGING_ID',
+  FORUM_ACCOUNT = 'FORUM_ACCOUNT',
+  APP = 'APP',
+  BLOG = 'BLOG', // Blog Site
+  PODCAST = 'PODCAST', // Podcast Channel
+  LIVESTREAM = 'LIVESTREAM', // Live Streaming
+  FORUM_POST = 'FORUM_POST', // Forum Post/Thread 
 
   // --- 4. FINANCIAL (金融) ---
   CRYPTO_WALLET = 'CRYPTO_WALLET',
   BANK_ACCOUNT = 'BANK_ACCOUNT',
   CREDIT_CARD = 'CREDIT_CARD',
   TRANSACTION = 'TRANSACTION',
+  INSURANCE_POLICY = 'INSURANCE_POLICY', // Insurance Policy
+  PROPERTY = 'PROPERTY', // Real Estate/Property
+  COMPANY_REGISTRATION = 'COMPANY_REGISTRATION', // Business Registration
+  PATENT = 'PATENT', // Patent/Trademark
+  TAX_RECORD = 'TAX_RECORD', // Tax Information
 
   // --- 5. PHYSICAL WORLD (物理世界) ---
   GEO_LOCATION = 'GEO_LOCATION',
-  FACILITY = 'FACILITY', 
+  FACILITY = 'FACILITY',
   VEHICLE = 'VEHICLE',
-  DEVICE = 'DEVICE', 
-  WEAPON = 'WEAPON', 
+  DEVICE = 'DEVICE',
+  WEAPON = 'WEAPON',
   SIM_CARD = 'SIM_CARD',
+  LICENSE_PLATE = 'LICENSE_PLATE', // Vehicle License Plate
+  BIOMETRIC = 'BIOMETRIC', // Biometric Data (Fingerprint, Face, etc.)
+  DRONE = 'DRONE', // Drone/UAV
+  SATELLITE_IMAGE = 'SATELLITE_IMAGE', // Satellite Imagery
+  CCTV_FOOTAGE = 'CCTV_FOOTAGE', // CCTV Recording
 
   // --- 6. TRAVEL & LOGISTICS (差旅与物流 - NEW) ---
   FLIGHT = 'FLIGHT',
@@ -56,13 +78,20 @@ export enum NodeType {
   VIDEO = 'VIDEO',
   AUDIO = 'AUDIO',
   DOCUMENT = 'DOCUMENT',
-  SOCIAL_POST = 'SOCIAL_POST', 
+  SOCIAL_POST = 'SOCIAL_POST',
   NEWS_ARTICLE = 'NEWS_ARTICLE',
-  DARKWEB_SITE = 'DARKWEB_SITE', 
+  DARKWEB_SITE = 'DARKWEB_SITE',
   FILE_HASH = 'FILE_HASH',
   CODE_SNIPPET = 'CODE_SNIPPET',
-  EXPLOIT = 'EXPLOIT', // New
-  PHISHING_KIT = 'PHISHING_KIT', // New
+  EXPLOIT = 'EXPLOIT',
+  PHISHING_KIT = 'PHISHING_KIT',
+  SCREENSHOT = 'SCREENSHOT', // Screenshot
+  METADATA = 'METADATA', // File/Image Metadata
+  QR_CODE = 'QR_CODE', // QR Code
+  BARCODE = 'BARCODE', // Barcode
+  ARTIFACT = 'ARTIFACT', // Digital Artifact
+  PDF_DOCUMENT = 'PDF_DOCUMENT', // PDF File
+  SPREADSHEET = 'SPREADSHEET', // Excel/CSV File
 
   // --- 8. INTELLIGENCE COLLECTION (情报搜集 - NEW) ---
   SOURCE_HUMINT = 'SOURCE_HUMINT', // Human Intelligence Source
@@ -75,13 +104,25 @@ export enum NodeType {
   // --- 9. INTELLIGENCE & ANALYSIS (情报与分析) ---
   REPORT = 'REPORT',
   NOTE = 'NOTE',
-  EVENT = 'EVENT', 
-  CAMPAIGN = 'CAMPAIGN', 
+  EVENT = 'EVENT',
+  CAMPAIGN = 'CAMPAIGN',
   VULNERABILITY = 'VULNERABILITY',
   MALWARE = 'MALWARE',
-  TOPIC = 'TOPIC', 
-  HYPOTHESIS = 'HYPOTHESIS', 
-  LEGAL_CASE = 'LEGAL_CASE', 
+  TOPIC = 'TOPIC',
+  HYPOTHESIS = 'HYPOTHESIS',
+  LEGAL_CASE = 'LEGAL_CASE',
+  ATTACK_PATTERN = 'ATTACK_PATTERN', // STIX: Attack Pattern/TTP
+  INTRUSION_SET = 'INTRUSION_SET', // STIX: Intrusion Campaign
+  MALWARE_ANALYSIS = 'MALWARE_ANALYSIS', // STIX: Malware Analysis Result
+  COURSE_OF_ACTION = 'COURSE_OF_ACTION', // STIX: Mitigation/Response
+  INDICATOR = 'INDICATOR', // STIX: IOC Indicator
+  TOOL_SOFTWARE = 'TOOL_SOFTWARE', // STIX: Tool/Software
+  OPINION = 'OPINION', // STIX: Assessment/Opinion
+  OBSERVED_DATA = 'OBSERVED_DATA', // STIX: Observation
+  COURT_RECORD = 'COURT_RECORD', // Court Documents
+  EMPLOYMENT_RECORD = 'EMPLOYMENT_RECORD', // Employment History
+  EDUCATION_RECORD = 'EDUCATION_RECORD', // Education History
+  MEDICAL_RECORD = 'MEDICAL_RECORD', // Medical Records 
   
   // --- 10. OPS (操作节点) ---
   SEARCH_QUERY = 'SEARCH_QUERY',
