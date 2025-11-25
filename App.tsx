@@ -7,7 +7,16 @@ import { IntelNode, Connection, NodeType, Position, LogEntry, Tool, AIModelConfi
 import { executeTool } from './services/geminiService';
 import { ENTITY_DEFAULT_FIELDS } from './constants';
 import { DEFAULT_TOOLS } from './tools';
-import { Search, Layout } from 'lucide-react';
+import { Search, Layout, Save, FolderOpen } from 'lucide-react';
+import {
+  saveAIConfig,
+  loadAIConfig,
+  saveCustomTool,
+  loadCustomTools,
+  saveGraphData,
+  loadGraphData,
+  hasGraphData
+} from './services/storageService';
 
 const uuid = () => Math.random().toString(36).substr(2, 9);
 
@@ -38,6 +47,10 @@ const App: React.FC = () => {
   // Context Menu State
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null);
 
+  // Persistence State
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+
   // Refs for async access in loops
   const nodesRef = useRef(nodes);
   nodesRef.current = nodes;
@@ -48,6 +61,88 @@ const App: React.FC = () => {
     console.log('[LOG]', newLog); // Debug: 确认日志被调用
     setLogs(prev => [newLog, ...prev].slice(0, 200));
   }, []);
+
+  // --- Persistence: 初始化加载数据 ---
+  useEffect(() => {
+    const initializeData = async () => {
+      try {
+        // 加载 AI 配置
+        const savedAiConfig = await loadAIConfig();
+        if (savedAiConfig) {
+          setAiConfig(savedAiConfig);
+        }
+
+        // 加载自定义工具
+        const savedTools = await loadCustomTools();
+        if (savedTools.length > 0) {
+          setTools([...DEFAULT_TOOLS, ...savedTools]);
+        }
+
+        // 检查并加载图谱数据
+        const hasData = await hasGraphData();
+        if (hasData) {
+          const { nodes: savedNodes, connections: savedConnections } = await loadGraphData();
+          setNodes(savedNodes);
+          setConnections(savedConnections);
+          addLog(`已恢复上次保存的图谱数据: ${savedNodes.length} 个节点, ${savedConnections.length} 个连接`, 'success');
+        }
+
+        setIsInitialized(true);
+      } catch (error) {
+        console.error('Failed to load saved data:', error);
+        addLog(`加载保存数据失败: ${error}`, 'error');
+        setIsInitialized(true);
+      }
+    };
+
+    initializeData();
+  }, []);
+
+  // --- Persistence: AI 配置自动保存 ---
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    saveAIConfig(aiConfig).catch(err => {
+      console.error('Failed to save AI config:', err);
+    });
+  }, [aiConfig, isInitialized]);
+
+  // --- Persistence: 图谱变更标记 ---
+  useEffect(() => {
+    if (!isInitialized) return;
+    if (nodes.length > 0 || connections.length > 0) {
+      setHasUnsavedChanges(true);
+    }
+  }, [nodes, connections, isInitialized]);
+
+  // --- Persistence: 手动保存图谱 ---
+  const handleSaveGraph = useCallback(async () => {
+    try {
+      await saveGraphData(nodes, connections);
+      setHasUnsavedChanges(false);
+      addLog(`图谱已保存: ${nodes.length} 个节点, ${connections.length} 个连接`, 'success');
+    } catch (error) {
+      addLog(`保存图谱失败: ${error}`, 'error');
+    }
+  }, [nodes, connections, addLog]);
+
+  // --- Persistence: 从本地加载图谱 ---
+  const handleLoadGraph = useCallback(async () => {
+    try {
+      const hasData = await hasGraphData();
+      if (!hasData) {
+        addLog('本地没有已保存的图谱数据', 'warning');
+        return;
+      }
+      const { nodes: savedNodes, connections: savedConnections } = await loadGraphData();
+      setNodes(savedNodes);
+      setConnections(savedConnections);
+      setHasUnsavedChanges(false);
+      addLog(`已加载图谱: ${savedNodes.length} 个节点, ${savedConnections.length} 个连接`, 'success');
+    } catch (error) {
+      addLog(`加载图谱失败: ${error}`, 'error');
+    }
+  }, [addLog]);
 
   // --- Core Graph Operations ---
   
@@ -287,9 +382,15 @@ const App: React.FC = () => {
     setIsProcessing(false);
   };
 
-  const handleSaveTool = (newTool: Tool) => {
+  const handleSaveTool = async (newTool: Tool) => {
       setTools(prev => [...prev, newTool]);
-      addLog(`新自定义插件已保存: ${newTool.name}`, 'success');
+      // 自动保存自定义工具到 IndexedDB
+      try {
+        await saveCustomTool(newTool);
+        addLog(`新自定义插件已保存: ${newTool.name}`, 'success');
+      } catch (error) {
+        addLog(`保存插件失败: ${error}`, 'error');
+      }
   };
 
   const handleNodeContextMenu = useCallback((e: React.MouseEvent, nodeId: string) => {
@@ -338,6 +439,28 @@ const App: React.FC = () => {
           >
               <Layout className="w-5 h-5 text-slate-400 group-hover:text-cyan-400 transition-colors" />
           </button>
+
+          <div className="flex items-center gap-1">
+            <button
+                onClick={handleSaveGraph}
+                title="保存图谱 / Save Graph"
+                className="bg-slate-900/90 backdrop-blur border border-slate-700 hover:border-cyan-500 rounded shadow-lg h-[50px] px-4 flex items-center justify-center gap-2 transition-all hover:bg-cyan-900/20 group relative"
+            >
+                <Save className="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" />
+                <span className="text-xs text-slate-400 group-hover:text-cyan-400">保存</span>
+                {hasUnsavedChanges && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-orange-500 rounded-full animate-pulse" title="有未保存的更改"></span>
+                )}
+            </button>
+            <button
+                onClick={handleLoadGraph}
+                title="加载图谱 / Load Graph"
+                className="bg-slate-900/90 backdrop-blur border border-slate-700 hover:border-slate-500 rounded shadow-lg h-[50px] px-4 flex items-center justify-center gap-2 transition-all hover:bg-slate-800/50 group"
+            >
+                <FolderOpen className="w-4 h-4 text-slate-400 group-hover:text-slate-300 transition-colors" />
+                <span className="text-xs text-slate-400 group-hover:text-slate-300">加载</span>
+            </button>
+          </div>
        </div>
 
        {/* Canvas */}

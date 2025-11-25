@@ -79,6 +79,12 @@
 - NATO 海军部编码系统评级 (可靠性 A-F / 可信度 1-6)
 - 完整的操作日志系统
 
+**本地数据持久化**
+- 图谱数据手动保存/加载（IndexedDB）
+- AI 配置自动保存
+- 自定义工具自动保存
+- 应用启动时自动恢复上次工作状态
+
 **自定义扩展**
 - 内置无代码插件编辑器
 - 支持自定义 Prompt 模板
@@ -158,9 +164,10 @@ npm run electron:build
 ### 4.1 界面概览
 
 **顶部左侧控制区**
-- **NEXUS OSINT 品牌标识**: 显示系统状态
+- **河图 品牌标识**: 显示系统状态
 - **全局搜索栏**: 输入关键词高亮实体
 - **自动布局按钮**: 一键整理图谱布局
+- **保存/加载按钮**: 持久化图谱数据到本地
 
 **中央画布 (Canvas)**
 - 无限画布工作区
@@ -236,8 +243,28 @@ npm run electron:build
 4. 支持导出 TXT 文件
 
 **数据导入导出**
-- 导入：拖拽 JSON 文件到画布
-- 导出：右侧面板 → 数据管理 → 导出为 JSON
+- 导入：资产库 → 点击上传图标 → 选择 JSON/TXT 文件
+- 导出：时间线 → 生成情报简报 → 下载 TXT
+
+### 4.5 数据保存与加载
+
+**保存图谱**
+1. 点击顶部工具栏的「保存」按钮
+2. 图谱数据（节点和连接）保存到浏览器本地 IndexedDB
+3. 有未保存更改时，按钮右上角显示橙色圆点提示
+
+**加载图谱**
+1. 点击顶部工具栏的「加载」按钮
+2. 从本地 IndexedDB 恢复上次保存的图谱
+
+**自动保存项目**
+以下数据会自动保存，无需手动操作：
+- AI 配置（模型选择、温度、思考模式）
+- 自定义创建的工具/插件
+
+**自动恢复**
+- 应用启动时自动加载上次保存的图谱数据
+- 自动恢复 AI 配置和自定义工具
 
 ---
 
@@ -267,8 +294,8 @@ npm run electron:build
 │  - SVG 连线      │    │  - 时间线引擎        │
 │  - 交互事件处理   │    │  - 属性编辑器        │
 └──────────────────┘    └──────────────────────┘
-          │
-          ▼
+          │                       │
+          ▼                       ▼
 ┌────────────────────────────────────────────┐
 │      services/geminiService.ts             │
 │  - Tool 执行策略 (AGENT/API/MCP)           │
@@ -283,6 +310,21 @@ npm run electron:build
 │  - gemini-2.5-flash (快速)                 │
 │  - gemini-3.0-pro (深度推理)               │
 │  - Search Grounding (实时 Web 数据)        │
+└────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────┐
+│      services/storageService.ts            │
+│  - IndexedDB 封装 (idb)                    │
+│  - 图谱数据持久化 (nodes/connections)       │
+│  - AI 配置自动保存                          │
+│  - 自定义工具存储                           │
+└────────────────────────────────────────────┘
+          │
+          ▼
+┌────────────────────────────────────────────┐
+│      Browser IndexedDB                     │
+│  - nexus-osint-db                          │
+│  - config / nodes / connections / tools    │
 └────────────────────────────────────────────┘
 ```
 
@@ -318,7 +360,8 @@ Canvas 重新渲染
 - **Framework**: React 19
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
-- **AI SDK**: `@google/generative-ai`
+- **AI SDK**: `@google/genai`
+- **Storage**: `idb` (IndexedDB 封装)
 - **Icons**: `lucide-react`
 - **Build Tool**: Vite
 - **Desktop**: Electron + electron-builder
@@ -489,7 +532,8 @@ nexus-osint-platform/
 │   │   ├── ControlPanel.tsx       # 右侧控制面板
 │   │   └── ContextMenu.tsx        # 右键菜单
 │   └── services/
-│       └── geminiService.ts       # AI 服务层
+│       ├── geminiService.ts       # AI 服务层
+│       └── storageService.ts      # 本地持久化服务 (IndexedDB)
 ├── public/                        # 静态资源
 ├── BUILD_GUIDE.md                 # Electron 打包指南
 ├── vite.config.ts                 # Vite 构建配置
@@ -509,8 +553,8 @@ A: 检查：
 
 **Q: 如何导出分析结果？**
 A:
-1. 时间线 → 生成情报简报 → 导出 TXT
-2. 数据管理 → 导出为 JSON（包含完整图谱）
+1. 时间线 → 生成情报简报 → 导出 TXT（AI 生成的报告）
+2. 图谱数据通过「保存」按钮持久化到本地 IndexedDB
 
 **Q: 节点太多时如何整理？**
 A: 点击顶部左侧的"自动布局"按钮，系统会按深度自动排列所有节点。
@@ -531,7 +575,7 @@ A:
 - [x] Google Gemini 集成
 - [x] Search Grounding 支持
 - [x] 桌面应用打包
-- [ ] 本地数据持久化（IndexedDB）
+- [x] 本地数据持久化（IndexedDB）
 - [ ] 多画布工作区
 - [ ] 团队协作功能
 - [ ] 插件市场
