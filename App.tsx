@@ -260,8 +260,7 @@ const App: React.FC = () => {
         }
      } catch (e: any) {
         const errorMsg = e?.message || String(e);
-        const errorDetail = errorMsg.length > 100 ? errorMsg.substring(0, 100) + '...' : errorMsg;
-        addLog(`✗ [${tool.name}] 执行失败 @ [${node.title}]: ${errorDetail}`, 'error');
+        addLog(`✗ [${tool.name}] 执行失败 @ [${node.title}]: ${errorMsg}`, 'error');
         setNodeStatus([node.id], 'ERROR');
         console.error(`Tool execution error [${tool.name}]:`, e);
         return [];

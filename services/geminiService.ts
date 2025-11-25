@@ -21,6 +21,71 @@ const getAI = async () => {
 };
 
 /**
+ * 清理和解析 JSON 响应
+ * 处理 AI 返回的可能包含 markdown 代码块或额外文本的响应
+ */
+const parseJsonResponse = (text: string): any => {
+  let cleanText = text.trim();
+
+  // 1. 尝试直接解析
+  try {
+    return JSON.parse(cleanText);
+  } catch (e) {
+    // 继续尝试其他方法
+  }
+
+  // 2. 清理 markdown 代码块标记 (```json ... ``` 或 ``` ... ```)
+  const codeBlockMatch = cleanText.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (codeBlockMatch) {
+    try {
+      return JSON.parse(codeBlockMatch[1].trim());
+    } catch (e) {
+      // 继续尝试其他方法
+    }
+  }
+
+  // 3. 尝试提取第一个 JSON 对象 (从 { 到匹配的 })
+  const firstBrace = cleanText.indexOf('{');
+  const lastBrace = cleanText.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    const jsonCandidate = cleanText.substring(firstBrace, lastBrace + 1);
+    try {
+      return JSON.parse(jsonCandidate);
+    } catch (e) {
+      // 继续尝试其他方法
+    }
+  }
+
+  // 4. 尝试提取 JSON 数组
+  const firstBracket = cleanText.indexOf('[');
+  const lastBracket = cleanText.lastIndexOf(']');
+  if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
+    const jsonCandidate = cleanText.substring(firstBracket, lastBracket + 1);
+    try {
+      return JSON.parse(jsonCandidate);
+    } catch (e) {
+      // 继续尝试其他方法
+    }
+  }
+
+  // 5. 清理常见的非法字符并重试
+  const sanitized = cleanText
+    .replace(/[\x00-\x1F\x7F]/g, '') // 移除控制字符
+    .replace(/,\s*}/g, '}')  // 移除尾随逗号
+    .replace(/,\s*]/g, ']'); // 移除数组尾随逗号
+
+  try {
+    return JSON.parse(sanitized);
+  } catch (e) {
+    // 所有方法都失败了
+  }
+
+  // 6. 如果所有方法都失败，抛出详细错误
+  const preview = cleanText.length > 200 ? cleanText.substring(0, 200) + '...' : cleanText;
+  throw new Error(`无法解析 AI 响应为 JSON。响应内容预览: ${preview}`);
+};
+
+/**
  * MOCK API HANDLER
  * Simulates fetching data from external OSINT APIs
  */
@@ -218,7 +283,7 @@ CRITICAL: Your response MUST be valid JSON with this exact structure:
 
     // Handle response (Potential grounding metadata for MCP)
     const resultText = response.text || "{}";
-    const result = JSON.parse(resultText);
+    const result = parseJsonResponse(resultText);
     
     // Helper: Convert KV Array back to Object
     const kvToObject = (arr: any[]) => {

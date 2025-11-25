@@ -224,6 +224,43 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
       if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  // 独立的属性输入组件，使用本地状态管理以避免焦点丢失
+  const PropertyInput = ({ propKey, initialValue, nodeId, nodeTitle, onUpdate, onLog: logFn }: {
+      propKey: string;
+      initialValue: string;
+      nodeId: string;
+      nodeTitle: string;
+      onUpdate: (key: string, value: string) => void;
+      onLog: (msg: string, status: LogEntry['status']) => void;
+  }) => {
+      const [localValue, setLocalValue] = useState(initialValue);
+      const isEmpty = localValue.trim() === '';
+
+      // 当外部值变化时同步（例如从其他地方更新了属性）
+      useEffect(() => {
+          setLocalValue(initialValue);
+      }, [initialValue]);
+
+      const handleBlur = () => {
+          if (localValue !== initialValue) {
+              onUpdate(propKey, localValue);
+              if (localValue) {
+                  logFn(`更新属性 [${nodeTitle}]: ${propKey} = ${localValue.substring(0, 20)}${localValue.length > 20 ? '...' : ''}`, 'info');
+              }
+          }
+      };
+
+      return (
+          <input
+              className={`flex-1 bg-transparent px-3 py-2 font-mono outline-none w-full ${isEmpty ? 'text-slate-600 italic' : 'text-cyan-400'}`}
+              value={localValue}
+              placeholder="未填写"
+              onChange={(e) => setLocalValue(e.target.value)}
+              onBlur={handleBlur}
+          />
+      );
+  };
+
   const PropertyGrid = ({ node }: { node: IntelNode }) => {
       const [newKey, setNewKey] = useState('');
       const [newValue, setNewValue] = useState('');
@@ -256,7 +293,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           onUpdateNode(node.id, { data: newData });
           onLog(`应用标准属性模版: ${node.type}`, 'info');
       };
-      
+
       const triggerUpload = (key: string) => {
           setUploadKey(key);
           propertyFileInputRef.current?.click();
@@ -278,10 +315,10 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
 
       return (
           <div className="bg-slate-950 border border-slate-800 rounded overflow-hidden">
-              <input 
-                  type="file" 
-                  ref={propertyFileInputRef} 
-                  className="hidden" 
+              <input
+                  type="file"
+                  ref={propertyFileInputRef}
+                  className="hidden"
                   onChange={handlePropertyFileChange}
               />
 
@@ -299,7 +336,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                       const strVal = String(v);
                       const isEmpty = strVal.trim() === '';
                       const isFile = strVal.startsWith('data:');
-                      
+
                       return (
                           <div key={k} className="flex flex-col group text-xs relative border-b border-slate-800/30 last:border-0">
                               <div className="flex items-center">
@@ -315,24 +352,23 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                                               </span>
                                           </div>
                                       ) : (
-                                        <input 
-                                            className={`flex-1 bg-transparent px-3 py-2 font-mono outline-none w-full ${isEmpty ? 'text-slate-600 italic' : 'text-cyan-400'}`}
-                                            value={strVal}
-                                            placeholder="未填写"
-                                            onChange={(e) => handleUpdate(k, e.target.value)}
-                                            onBlur={() => {
-                                                if(strVal) onLog(`更新属性 [${node.title}]: ${k} = ${strVal.substring(0, 20)}...`, 'info');
-                                            }}
+                                        <PropertyInput
+                                            propKey={k}
+                                            initialValue={strVal}
+                                            nodeId={node.id}
+                                            nodeTitle={node.title}
+                                            onUpdate={handleUpdate}
+                                            onLog={onLog}
                                         />
                                       )}
                                       <div className="flex items-center gap-1 pr-1 opacity-0 group-hover:opacity-100 transition-opacity absolute right-0 bg-slate-900/80 h-full z-10">
-                                         <button 
+                                         <button
                                               onClick={() => triggerUpload(k)}
                                               className="p-1.5 text-slate-500 hover:text-cyan-400"
                                           >
                                               <Paperclip className="w-3 h-3" />
                                           </button>
-                                          <button 
+                                          <button
                                               onClick={() => handleDelete(k)}
                                               className="p-1.5 text-slate-500 hover:text-red-400"
                                           >
@@ -345,13 +381,13 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                       );
                   })}
                   <div className="flex items-center border-t border-slate-800/50">
-                      <input 
+                      <input
                           className="w-1/3 px-3 py-2 bg-slate-950 text-xs text-slate-400 placeholder:text-slate-700 outline-none font-mono"
                           placeholder="Key"
                           value={newKey}
                           onChange={e => setNewKey(e.target.value)}
                       />
-                      <input 
+                      <input
                           className="flex-1 px-3 py-2 bg-slate-950 text-xs text-slate-400 placeholder:text-slate-700 outline-none font-mono border-l border-slate-800"
                           placeholder="Value"
                           value={newValue}
