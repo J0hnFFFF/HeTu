@@ -5,6 +5,7 @@ import { IntelNode, NodeType } from '../types';
 import { MiniMap } from './MiniMap';
 import { MapModal } from './MapModal';
 import { MediaModal } from './MediaModal';
+import { getCommunityColorClass } from '../services/graphAnalysis';
 import {
   User, Globe, Image as ImageIcon, FileText,
   Link2, Network, Server, MapPin, Hash, Database, AtSign, Loader2,
@@ -17,7 +18,8 @@ import {
   GitBranch, Waves, Play, Folder, UserCog, Award, Shield, Target,
   Microscope, FileCheck, Eye, Gauge, Camera, QrCode, Barcode, Package,
   FileSpreadsheet, Monitor, Key, Scroll, Briefcase, GraduationCap, Heart,
-  Home, Shield as ShieldIcon, Wrench, FileArchive, Settings, Podcast, Cast
+  Home, Shield as ShieldIcon, Wrench, FileArchive, Settings, Podcast, Cast,
+  Star
 } from 'lucide-react';
 
 interface NodeCardProps {
@@ -26,6 +28,10 @@ interface NodeCardProps {
   onPointerDown: (e: React.PointerEvent) => void;
   onStartConnect: (e: React.PointerEvent) => void;
   onContextMenu: (e: React.MouseEvent) => void;
+  // Graph Analysis Props
+  communityId?: number;
+  isKeyNode?: boolean;
+  centrality?: number;
 }
 
 // Helper function to parse coordinate string
@@ -50,7 +56,8 @@ const parseCoordinates = (value: string): { lat: number; lng: number } | null =>
 const COORDINATE_FIELDS = ['经纬度', '坐标', 'coordinates', 'latlng', 'location'];
 
 export const NodeCard: React.FC<NodeCardProps> = ({
-  node, isSelected, onPointerDown, onStartConnect, onContextMenu
+  node, isSelected, onPointerDown, onStartConnect, onContextMenu,
+  communityId, isKeyNode, centrality
 }) => {
   const [mapModalOpen, setMapModalOpen] = useState(false);
   const [activeCoords, setActiveCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -204,11 +211,21 @@ export const NodeCard: React.FC<NodeCardProps> = ({
 
   const isProcessing = node.status === 'PROCESSING';
 
-  const borderColor = isSelected 
-    ? 'border-cyan-500 shadow-[0_0_20px_rgba(6,182,212,0.4)] ring-1 ring-cyan-500' 
+  // Build border color class based on state priority: Selected > Processing > Key Node > Community > Default
+  const getCommunityBorderClass = () => {
+    if (communityId === undefined) return '';
+    return getCommunityColorClass(communityId);
+  };
+
+  const borderColor = isSelected
+    ? 'border-cyan-500 shadow-[0_0_20px_rgba(6,182,212,0.4)] ring-1 ring-cyan-500'
     : isProcessing
         ? 'border-cyan-400/50 shadow-[0_0_15px_rgba(34,211,238,0.3)] animate-pulse'
-        : 'border-slate-700 hover:border-slate-500';
+        : isKeyNode
+            ? `${getCommunityBorderClass() || 'border-amber-500'} shadow-[0_0_15px_rgba(245,158,11,0.3)] ring-1 ring-amber-500/50`
+            : communityId !== undefined
+                ? `${getCommunityBorderClass()} border-2`
+                : 'border-slate-700 hover:border-slate-500';
 
   // Status indicator color
   const getStatusColor = () => {
@@ -261,11 +278,23 @@ export const NodeCard: React.FC<NodeCardProps> = ({
       <div className="flex items-center gap-3 px-3 py-3 border-b border-slate-800/50">
         <div className="p-1.5 bg-slate-900 rounded border border-slate-800 relative">
            {isProcessing ? <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" /> : getIcon()}
+           {/* Key Node Badge */}
+           {isKeyNode && (
+             <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-amber-500 rounded-full flex items-center justify-center shadow-lg" title="核心节点">
+               <Star className="w-2 h-2 text-black fill-black" />
+             </div>
+           )}
         </div>
         <div className="flex-1 min-w-0">
             <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider flex items-center gap-1">
                <div className={`w-1.5 h-1.5 rounded-full ${getStatusColor()}`}></div>
                {isProcessing ? 'PROCESSING...' : node.type}
+               {/* Community Badge */}
+               {communityId !== undefined && (
+                 <span className={`ml-1 px-1 py-0.5 rounded text-[8px] bg-slate-800 ${getCommunityBorderClass()} border`}>
+                   C{communityId + 1}
+                 </span>
+               )}
             </div>
             <div className="font-bold text-xs truncate text-white font-mono" title={node.title}>
                {node.title}
@@ -381,15 +410,33 @@ export const NodeCard: React.FC<NodeCardProps> = ({
          )}
       </div>
 
-      {/* Footer / Rating */}
-      {node.rating && (
+      {/* Footer / Rating & Centrality */}
+      {(node.rating || centrality !== undefined) && (
         <div className="px-3 py-1.5 border-t border-slate-800/50 bg-black/20 flex justify-between items-center">
-           <span className="text-[9px] text-slate-600">Source Rating</span>
-           <span className={`text-[9px] font-mono px-1 rounded border ${
-               node.rating.reliability === 'A' ? 'border-green-800 text-green-400 bg-green-900/20' : 'border-slate-700 text-slate-400'
-           }`}>
-               {node.rating.reliability}{node.rating.credibility}
-           </span>
+           {node.rating ? (
+             <>
+               <span className="text-[9px] text-slate-600">Source Rating</span>
+               <div className="flex items-center gap-2">
+                 {centrality !== undefined && (
+                   <span className="text-[9px] font-mono px-1 rounded border border-purple-800 text-purple-400 bg-purple-900/20" title={`中心性得分: ${(centrality * 100).toFixed(0)}%`}>
+                     {(centrality * 100).toFixed(0)}%
+                   </span>
+                 )}
+                 <span className={`text-[9px] font-mono px-1 rounded border ${
+                     node.rating.reliability === 'A' ? 'border-green-800 text-green-400 bg-green-900/20' : 'border-slate-700 text-slate-400'
+                 }`}>
+                     {node.rating.reliability}{node.rating.credibility}
+                 </span>
+               </div>
+             </>
+           ) : centrality !== undefined && (
+             <>
+               <span className="text-[9px] text-slate-600">中心性 (Centrality)</span>
+               <span className="text-[9px] font-mono px-1 rounded border border-purple-800 text-purple-400 bg-purple-900/20">
+                 {(centrality * 100).toFixed(0)}%
+               </span>
+             </>
+           )}
         </div>
       )}
 

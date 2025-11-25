@@ -2,6 +2,7 @@
 import React, { useRef, useState } from 'react';
 import { IntelNode, Connection, Position, NodeType } from '../types';
 import { NodeCard } from './NodeCard';
+import { GraphAnalysisResult } from '../services/graphAnalysis';
 
 interface CanvasProps {
   nodes: IntelNode[];
@@ -13,6 +14,7 @@ interface CanvasProps {
   onAddNode: (pos: Position, type: NodeType) => void;
   onNodeContextMenu: (e: React.MouseEvent, nodeId: string) => void;
   searchTerm?: string;
+  graphAnalysis?: GraphAnalysisResult | null;
 }
 
 type InteractionMode = 'IDLE' | 'PANNING' | 'DRAGGING_NODE' | 'CONNECTING';
@@ -26,7 +28,8 @@ export const Canvas: React.FC<CanvasProps> = ({
   onConnect,
   onAddNode,
   onNodeContextMenu,
-  searchTerm = ''
+  searchTerm = '',
+  graphAnalysis
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   
@@ -293,6 +296,11 @@ export const Canvas: React.FC<CanvasProps> = ({
              node.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
              node.type.toLowerCase().includes(searchTerm.toLowerCase());
           
+          // Get community and key node info from analysis
+          const communityId = graphAnalysis?.communities.get(node.id);
+          const isKeyNode = graphAnalysis?.keyNodes.includes(node.id) ?? false;
+          const centrality = graphAnalysis?.centrality.get(node.id);
+
           return (
             <div key={node.id} style={{ opacity: isMatch ? 1 : 0.2, transition: 'opacity 0.2s' }}>
                 <NodeCard
@@ -305,6 +313,9 @@ export const Canvas: React.FC<CanvasProps> = ({
                         e.stopPropagation();
                         onNodeContextMenu(e, node.id);
                     }}
+                    communityId={communityId}
+                    isKeyNode={isKeyNode}
+                    centrality={centrality}
                 />
             </div>
           )

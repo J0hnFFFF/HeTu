@@ -15,6 +15,7 @@ import {
 import { NodeType, IntelNode, Tool, LogEntry, ToolCategory, AIModelConfig } from '../types';
 import { ENTITY_DEFAULT_FIELDS, AI_MODELS } from '../constants';
 import { generateFinalReport } from '../services/geminiService';
+import { generateBriefingPDF } from '../services/pdfExportService';
 
 interface ControlPanelProps {
   selectedNodes: IntelNode[];
@@ -613,8 +614,8 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                         {reportText}
                     </div>
                     <div className="p-3 border-t border-slate-800 flex justify-end gap-2">
-                        <button 
-                            className="px-3 py-1.5 bg-cyan-600 text-white rounded text-xs"
+                        <button
+                            className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded text-xs flex items-center gap-1 transition-colors"
                             onClick={() => {
                                 const blob = new Blob([reportText], {type: 'text/plain'});
                                 const url = URL.createObjectURL(blob);
@@ -624,7 +625,22 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                                 a.click();
                             }}
                         >
+                            <FileText className="w-3 h-3" />
                             下载 .TXT
+                        </button>
+                        <button
+                            className="px-3 py-1.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white rounded text-xs flex items-center gap-1 transition-colors shadow-lg"
+                            onClick={() => {
+                                try {
+                                    generateBriefingPDF(reportText, '情报简报 (Intelligence Briefing)');
+                                    onLog('PDF 简报导出成功', 'success');
+                                } catch (err) {
+                                    onLog(`PDF 导出失败: ${err}`, 'error');
+                                }
+                            }}
+                        >
+                            <FileOutput className="w-3 h-3" />
+                            下载 .PDF
                         </button>
                     </div>
                 </div>

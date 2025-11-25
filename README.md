@@ -1,8 +1,8 @@
 
-# 河图情报分析系统 v5.4.0
+# 河图情报分析系统 v5.5.0
 
 ![Status](https://img.shields.io/badge/Status-Active-success)
-![Version](https://img.shields.io/badge/Version-5.4-blue)
+![Version](https://img.shields.io/badge/Version-5.5-blue)
 ![Tech](https://img.shields.io/badge/Tech-React19%20%7C%20Gemini%20AI%20%7C%20Tailwind-0ea5e9)
 ![Platform](https://img.shields.io/badge/Platform-Web%20%7C%20Windows%20%7C%20macOS-lightgrey)
 
@@ -36,6 +36,9 @@
 - 实时系统日志跟踪所有操作
 - **地图视图**: 地理位置节点自动显示交互式地图 (Leaflet/OpenStreetMap)
 - **媒体预览**: 图片/视频/音频点击放大查看，支持缩放、旋转、下载
+- **时空轨迹分析**: 可视化目标实体的活动轨迹，地图+时间线联动
+- **社区发现**: 标签传播算法自动识别关系网络中的群组/派系
+- **核心人物识别**: PageRank + 度中心性算法识别网络中的关键节点
 
 **多维实体支持 (110+ 类型)**
 - **主体实体**: 人员、组织、威胁行为者、军事单位、政府机构
@@ -78,6 +81,7 @@
 **决策辅助**
 - 自动生成事件时间线
 - AI 驱动的情报简报生成
+- **专业 PDF 导出**: 情报简报一键导出为格式化 PDF 文档
 - NATO 海军部编码系统评级 (可靠性 A-F / 可信度 1-6)
 - 完整的操作日志系统
 
@@ -271,7 +275,45 @@ npm run electron:build
 - 自动播放
 - 下载音频文件
 
-### 4.6 高级功能
+### 4.6 网络分析
+
+**社区发现与核心人物识别**
+
+点击顶部工具栏的「分析网络」按钮，系统自动执行：
+1. **社区发现** - 使用标签传播算法识别图谱中的群组/派系
+2. **核心人物识别** - 通过 PageRank + 度中心性算法找出关键节点
+
+**可视化效果**
+- 不同社区的节点显示不同颜色边框（10种预设颜色）
+- 核心节点显示金色星星徽章和发光效果
+- 节点头部显示社区编号（C1, C2, C3...）
+- 节点底部显示中心性得分百分比
+
+**应用场景**
+- 识别犯罪网络中的核心成员
+- 发现组织架构中的派系关系
+- 找出信息传播的关键节点
+- 分析社交网络的影响力中心
+
+### 4.7 时空轨迹分析
+
+右键点击任意实体节点，选择「分析时空轨迹」，可视化该实体的活动轨迹。
+
+**前置条件**
+- 目标节点需关联包含「经纬度」字段的位置节点
+- 位置节点可包含「时间」字段用于时间排序
+
+**分析界面**
+- 左侧：地图显示所有轨迹点，按时间顺序用虚线连接
+- 右侧：时间轴列表，显示每个位置点的详细信息
+- 支持街道/卫星底图切换
+
+**应用场景**
+- 追踪目标人物的活动路线
+- 分析物流货运的运输轨迹
+- 重建事件发生的时空线索
+
+### 4.8 高级功能
 
 **自定义工具**
 1. 资产库 → 点击 `+ 新建插件`
@@ -284,13 +326,20 @@ npm run electron:build
 1. 切换到"时间线"标签
 2. 点击底部"生成情报简报"
 3. AI 汇总画布所有信息生成报告
-4. 支持导出 TXT 文件
+4. 支持导出 TXT 或 PDF 文件
+
+**PDF 导出格式**
+- 专业情报简报格式
+- 包含页眉（系统标识、机密标识）
+- 自动分页和页码
+- 日期时间戳
+- 支持长文档自动换行
 
 **数据导入导出**
 - 导入：资产库 → 点击上传图标 → 选择 JSON/TXT 文件
-- 导出：时间线 → 生成情报简报 → 下载 TXT
+- 导出：时间线 → 生成情报简报 → 下载 TXT/PDF
 
-### 4.7 数据保存与加载
+### 4.9 数据保存与加载
 
 **保存图谱**
 1. 点击顶部工具栏的「保存」按钮
@@ -407,6 +456,7 @@ Canvas 重新渲染
 - **AI SDK**: `@google/genai`
 - **Storage**: `idb` (IndexedDB 封装)
 - **Maps**: `leaflet` + `react-leaflet` (OpenStreetMap)
+- **PDF**: `jspdf` (PDF 导出)
 - **Icons**: `lucide-react`
 - **Build Tool**: Vite
 - **Desktop**: Electron + electron-builder
@@ -578,10 +628,13 @@ nexus-osint-platform/
 │   │   ├── ContextMenu.tsx        # 右键菜单
 │   │   ├── MiniMap.tsx            # 小地图预览组件
 │   │   ├── MapModal.tsx           # 大地图弹窗组件
-│   │   └── MediaModal.tsx         # 媒体预览弹窗组件
+│   │   ├── MediaModal.tsx         # 媒体预览弹窗组件
+│   │   └── TrajectoryModal.tsx    # 时空轨迹分析弹窗
 │   └── services/
 │       ├── geminiService.ts       # AI 服务层
-│       └── storageService.ts      # 本地持久化服务 (IndexedDB)
+│       ├── storageService.ts      # 本地持久化服务 (IndexedDB)
+│       ├── graphAnalysis.ts       # 图谱分析服务 (社区发现/核心节点)
+│       └── pdfExportService.ts    # PDF 导出服务
 ├── public/                        # 静态资源
 ├── BUILD_GUIDE.md                 # Electron 打包指南
 ├── vite.config.ts                 # Vite 构建配置
@@ -601,7 +654,7 @@ A: 检查：
 
 **Q: 如何导出分析结果？**
 A:
-1. 时间线 → 生成情报简报 → 导出 TXT（AI 生成的报告）
+1. 时间线 → 生成情报简报 → 导出 TXT 或 PDF（AI 生成的报告）
 2. 图谱数据通过「保存」按钮持久化到本地 IndexedDB
 
 **Q: 节点太多时如何整理？**
@@ -626,6 +679,9 @@ A:
 - [x] 本地数据持久化（IndexedDB）
 - [x] 地图视图 (Leaflet/OpenStreetMap)
 - [x] 媒体预览 (图片/视频/音频放大查看)
+- [x] 时空轨迹分析
+- [x] 社区发现 & 核心人物识别
+- [x] PDF 简报导出
 - [ ] 多画布工作区
 - [ ] 团队协作功能
 - [ ] 插件市场

@@ -1,6 +1,6 @@
 
 import React, { useEffect, useRef } from 'react';
-import { Play, Zap, X, Trash2 } from 'lucide-react';
+import { Play, Zap, X, Trash2, Route } from 'lucide-react';
 import { Tool, IntelNode } from '../types';
 
 interface ContextMenuProps {
@@ -11,6 +11,7 @@ interface ContextMenuProps {
   onRunTool: (tool: Tool) => void;
   onDelete: () => void;
   onClose: () => void;
+  onAnalyzeTrajectory?: () => void;
 }
 
 export const ContextMenu: React.FC<ContextMenuProps> = ({
@@ -20,7 +21,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   availableTools,
   onRunTool,
   onDelete,
-  onClose
+  onClose,
+  onAnalyzeTrajectory
 }) => {
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -96,6 +98,21 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
         )}
       </div>
       
+      {/* 分析功能 */}
+      {onAnalyzeTrajectory && (
+        <div className="p-1 border-t border-slate-800 bg-slate-950/30">
+          <button
+            onClick={() => { onAnalyzeTrajectory(); onClose(); }}
+            className="w-full flex items-center gap-3 px-2 py-2 text-left hover:bg-cyan-900/20 hover:text-cyan-400 rounded text-slate-400 transition-colors group"
+          >
+            <div className="p-1 bg-slate-800 group-hover:bg-cyan-900/50 rounded text-slate-500 group-hover:text-cyan-400">
+               <Route className="w-3 h-3" />
+            </div>
+            <span className="text-xs font-medium">分析时空轨迹</span>
+          </button>
+        </div>
+      )}
+
       <div className="p-1 border-t border-slate-800 bg-slate-950/30">
           <button
             onClick={() => { onDelete(); onClose(); }}

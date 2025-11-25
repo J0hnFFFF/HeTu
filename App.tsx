@@ -3,11 +3,13 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Canvas } from './components/Canvas';
 import { ControlPanel } from './components/ControlPanel';
 import { ContextMenu } from './components/ContextMenu';
+import { TrajectoryModal, extractTrajectoryPoints } from './components/TrajectoryModal';
 import { IntelNode, Connection, NodeType, Position, LogEntry, Tool, AIModelConfig } from './types';
 import { executeTool } from './services/geminiService';
+import { analyzeGraph, GraphAnalysisResult } from './services/graphAnalysis';
 import { ENTITY_DEFAULT_FIELDS } from './constants';
 import { DEFAULT_TOOLS } from './tools';
-import { Search, Layout, Save, FolderOpen } from 'lucide-react';
+import { Search, Layout, Save, FolderOpen, Network } from 'lucide-react';
 import {
   saveAIConfig,
   loadAIConfig,
@@ -46,6 +48,12 @@ const App: React.FC = () => {
 
   // Context Menu State
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null);
+
+  // Trajectory Analysis State
+  const [trajectoryModal, setTrajectoryModal] = useState<{ isOpen: boolean; nodeId: string | null }>({ isOpen: false, nodeId: null });
+
+  // Graph Analysis State (Community Detection & Key Nodes)
+  const [graphAnalysis, setGraphAnalysis] = useState<GraphAnalysisResult | null>(null);
 
   // Persistence State
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -404,6 +412,49 @@ const App: React.FC = () => {
      }
   }, [nodes]);
 
+  // Trajectory Analysis Handler
+  const handleAnalyzeTrajectory = useCallback((nodeId: string) => {
+    const node = nodes.find(n => n.id === nodeId);
+    if (node) {
+      setTrajectoryModal({ isOpen: true, nodeId });
+      addLog(`📍 分析时空轨迹: ${node.title}`, 'info');
+    }
+  }, [nodes, addLog]);
+
+  // Graph Analysis Handler (Community Detection & Key Nodes)
+  const handleAnalyzeGraph = useCallback(() => {
+    if (nodes.length === 0) {
+      addLog('⚠️ 图谱为空，无法进行网络分析', 'warning');
+      return;
+    }
+
+    addLog('🔍 正在进行网络分析 (社区发现 + 核心人物识别)...', 'info');
+
+    const result = analyzeGraph(nodes, connections);
+    setGraphAnalysis(result);
+
+    // Log analysis results
+    const keyNodeNames = result.keyNodes
+      .map(id => nodes.find(n => n.id === id)?.title || id)
+      .slice(0, 5);
+
+    addLog(
+      `✓ 网络分析完成: 发现 ${result.communityCount} 个社区, ${result.keyNodes.length} 个核心节点`,
+      'success'
+    );
+
+    if (result.keyNodes.length > 0) {
+      addLog(`🌟 核心人物: ${keyNodeNames.join(', ')}${result.keyNodes.length > 5 ? '...' : ''}`, 'info');
+    }
+  }, [nodes, connections, addLog]);
+
+  // Clear graph analysis when nodes change significantly
+  useEffect(() => {
+    if (graphAnalysis && nodes.length === 0) {
+      setGraphAnalysis(null);
+    }
+  }, [nodes.length, graphAnalysis]);
+
   const handleSearch = (term: string) => {
       setSearchTerm(term);
       // Optional: Log search if needed, but avoiding spam
@@ -438,6 +489,21 @@ const App: React.FC = () => {
               className="bg-slate-900/90 backdrop-blur border border-slate-700 hover:border-cyan-500 rounded shadow-lg h-[50px] w-[50px] flex items-center justify-center transition-all hover:bg-cyan-900/20 group"
           >
               <Layout className="w-5 h-5 text-slate-400 group-hover:text-cyan-400 transition-colors" />
+          </button>
+
+          <button
+              onClick={handleAnalyzeGraph}
+              title="分析网络 / Analyze Network (社区发现 & 核心人物)"
+              className={`bg-slate-900/90 backdrop-blur border rounded shadow-lg h-[50px] px-4 flex items-center justify-center gap-2 transition-all group ${
+                graphAnalysis
+                  ? 'border-purple-500 bg-purple-900/20'
+                  : 'border-slate-700 hover:border-purple-500 hover:bg-purple-900/20'
+              }`}
+          >
+              <Network className={`w-4 h-4 transition-colors ${graphAnalysis ? 'text-purple-400' : 'text-slate-400 group-hover:text-purple-400'}`} />
+              <span className={`text-xs transition-colors ${graphAnalysis ? 'text-purple-400' : 'text-slate-400 group-hover:text-purple-400'}`}>
+                {graphAnalysis ? `${graphAnalysis.communityCount} 社区` : '分析网络'}
+              </span>
           </button>
 
           <div className="flex items-center gap-1">
@@ -475,6 +541,7 @@ const App: React.FC = () => {
             onAddNode={(pos, type) => addNode(pos, type, '手动创建', 0)}
             onNodeContextMenu={handleNodeContextMenu}
             searchTerm={searchTerm}
+            graphAnalysis={graphAnalysis}
           />
           
           {contextMenu && (() => {
@@ -486,7 +553,7 @@ const App: React.FC = () => {
               );
 
               return (
-                  <ContextMenu 
+                  <ContextMenu
                     x={contextMenu.x}
                     y={contextMenu.y}
                     node={node}
@@ -494,6 +561,7 @@ const App: React.FC = () => {
                     onRunTool={(tool) => handleRunTool(tool, [node])}
                     onDelete={() => deleteNodes([node.id])}
                     onClose={() => setContextMenu(null)}
+                    onAnalyzeTrajectory={() => handleAnalyzeTrajectory(node.id)}
                   />
               )
           })()}
@@ -517,6 +585,21 @@ const App: React.FC = () => {
          onUpdateAiConfig={handleUpdateAiConfig}
          onLog={addLog}
        />
+
+       {/* Trajectory Analysis Modal */}
+       {trajectoryModal.isOpen && trajectoryModal.nodeId && (() => {
+         const targetNode = nodes.find(n => n.id === trajectoryModal.nodeId);
+         if (!targetNode) return null;
+         const trajectoryPoints = extractTrajectoryPoints(targetNode, nodes, connections);
+         return (
+           <TrajectoryModal
+             isOpen={trajectoryModal.isOpen}
+             onClose={() => setTrajectoryModal({ isOpen: false, nodeId: null })}
+             targetNode={targetNode}
+             trajectoryPoints={trajectoryPoints}
+           />
+         );
+       })()}
     </div>
   );
 };
