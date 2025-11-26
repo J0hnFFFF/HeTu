@@ -39,7 +39,7 @@
   },
   "build": {
     "appId": "com.nexus.osint",
-    "productName": "Hetu OSINT",
+    "productName": "HetuOSINT",
     "files": [
       "dist/**/*",
       "electron.cjs",

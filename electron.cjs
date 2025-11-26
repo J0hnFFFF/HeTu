@@ -50,6 +50,9 @@ function createWindow() {
     },
   });
 
+  // 启动时最大化窗口
+  win.maximize();
+
   // 2. 隐藏默认菜单栏 (可选，为了沉浸式体验)
   // Menu.setApplicationMenu(null);
 
