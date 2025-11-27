@@ -8,6 +8,8 @@ import { NodeDetailPanel } from './components/NodeDetailPanel';
 import { IntelNode, Connection, NodeType, Position, LogEntry, Tool, AIModelConfig } from './types';
 import { executeTool, generateFinalReport, BriefingContext } from './services/geminiService';
 import { analyzeGraph, GraphAnalysisResult } from './services/graphAnalysis';
+import { analyzeInvestigation, InvestigationAnalysis } from './services/investigationEngine';
+import { AnalysisPanel } from './components/AnalysisPanel';
 import { ENTITY_DEFAULT_FIELDS } from './constants';
 import { DEFAULT_TOOLS } from './tools';
 import { Search, Layout, Save, FolderOpen, Network, Trash2, FileText, X, FileOutput, RefreshCw } from 'lucide-react';
@@ -58,6 +60,10 @@ const App: React.FC = () => {
 
   // Graph Analysis State (Community Detection & Key Nodes)
   const [graphAnalysis, setGraphAnalysis] = useState<GraphAnalysisResult | null>(null);
+
+  // Investigation Analysis State (Completeness Analysis)
+  const [investigationAnalysis, setInvestigationAnalysis] = useState<InvestigationAnalysis | null>(null);
+  const [analysisModalOpen, setAnalysisModalOpen] = useState(false);
 
   // Briefing Report State
   const [reportText, setReportText] = useState('');
@@ -525,39 +531,52 @@ const App: React.FC = () => {
     }
   }, [nodes, addLog]);
 
-  // Graph Analysis Handler (Community Detection & Key Nodes)
+  // Graph Analysis Handler (Community Detection & Key Nodes + Investigation Completeness)
   const handleAnalyzeGraph = useCallback(() => {
     if (nodes.length === 0) {
       addLog('⚠️ 图谱为空，无法进行网络分析', 'warning');
       return;
     }
 
-    addLog('🔍 正在进行网络分析 (社区发现 + 核心人物识别)...', 'info');
+    addLog('🔍 正在进行网络分析 (社区发现 + 核心人物 + 完整性分析)...', 'info');
 
-    const result = analyzeGraph(nodes, connections);
-    setGraphAnalysis(result);
+    // 1. 网络结构分析
+    const graphResult = analyzeGraph(nodes, connections);
+    setGraphAnalysis(graphResult);
+
+    // 2. 调查完整性分析
+    const investigationResult = analyzeInvestigation(nodes, connections);
+    setInvestigationAnalysis(investigationResult);
 
     // Log analysis results
-    const keyNodeNames = result.keyNodes
+    const keyNodeNames = graphResult.keyNodes
       .map(id => nodes.find(n => n.id === id)?.title || id)
       .slice(0, 5);
 
     addLog(
-      `✓ 网络分析完成: 发现 ${result.communityCount} 个社区, ${result.keyNodes.length} 个核心节点`,
+      `✓ 网络分析完成: ${graphResult.communityCount} 社区, ${graphResult.keyNodes.length} 核心节点, 平均完整性 ${(investigationResult.averageCompleteness * 100).toFixed(0)}%`,
       'success'
     );
 
-    if (result.keyNodes.length > 0) {
-      addLog(`🌟 核心人物: ${keyNodeNames.join(', ')}${result.keyNodes.length > 5 ? '...' : ''}`, 'info');
+    if (graphResult.keyNodes.length > 0) {
+      addLog(`🌟 核心人物: ${keyNodeNames.join(', ')}${graphResult.keyNodes.length > 5 ? '...' : ''}`, 'info');
     }
+
+    if (investigationResult.prioritizedSuggestions.length > 0) {
+      addLog(`📋 发现 ${investigationResult.prioritizedSuggestions.length} 个需要完善的节点`, 'info');
+    }
+
+    // 打开分析面板
+    setAnalysisModalOpen(true);
   }, [nodes, connections, addLog]);
 
-  // Clear graph analysis when nodes change significantly
+  // Clear analysis when nodes are empty
   useEffect(() => {
-    if (graphAnalysis && nodes.length === 0) {
-      setGraphAnalysis(null);
+    if (nodes.length === 0) {
+      if (graphAnalysis) setGraphAnalysis(null);
+      if (investigationAnalysis) setInvestigationAnalysis(null);
     }
-  }, [nodes.length, graphAnalysis]);
+  }, [nodes.length, graphAnalysis, investigationAnalysis]);
 
   const handleSearch = (term: string) => {
       setSearchTerm(term);
@@ -810,6 +829,19 @@ const App: React.FC = () => {
          isOpen={detailPanel.isOpen}
          onClose={() => setDetailPanel({ isOpen: false, nodeId: null })}
          node={detailPanel.nodeId ? nodes.find(n => n.id === detailPanel.nodeId) || null : null}
+       />
+
+       {/* Network Analysis Panel */}
+       <AnalysisPanel
+         isOpen={analysisModalOpen}
+         onClose={() => setAnalysisModalOpen(false)}
+         nodes={nodes}
+         graphAnalysis={graphAnalysis}
+         investigationAnalysis={investigationAnalysis}
+         onNodeSelect={(nodeId) => {
+           handleSelectionChange([nodeId]);
+           // 滚动到节点位置（可选功能，暂时只选中）
+         }}
        />
     </div>
   );
