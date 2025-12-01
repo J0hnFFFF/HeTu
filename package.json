@@ -1,7 +1,7 @@
 {
   "name": "nexus-osint-platform",
   "private": true,
-  "version": "6.0.0",
+  "version": "6.1.0",
   "main": "electron.cjs",
   "homepage": "./",
   "type": "module",

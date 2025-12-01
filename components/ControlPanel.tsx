@@ -14,6 +14,16 @@ import {
 } from 'lucide-react';
 import { NodeType, IntelNode, Tool, LogEntry, ToolCategory, AIModelConfig } from '../types';
 import { ENTITY_DEFAULT_FIELDS, AI_MODELS } from '../constants';
+import {
+  HETU_GATEWAY_URL,
+  getApiMode,
+  setApiMode as saveApiMode,
+  getHetuApiKey,
+  setHetuApiKey as saveHetuApiKey,
+  removeHetuApiKey,
+  getMachineId,
+  type ApiMode
+} from '../services/apiConfig';
 
 interface ControlPanelProps {
   selectedNodes: IntelNode[];
@@ -58,6 +68,18 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   const [hasApiKey, setHasApiKey] = useState<boolean>(false);
   const [showApiKey, setShowApiKey] = useState<boolean>(false);
   const [apiKeyInput, setApiKeyInput] = useState<string>('');
+
+  // Hetu API Key Management
+  const [hetuApiKey, setHetuApiKey] = useState<string>('');
+  const [hasHetuApiKey, setHasHetuApiKey] = useState<boolean>(false);
+  const [showHetuApiKey, setShowHetuApiKey] = useState<boolean>(false);
+  const [hetuApiKeyInput, setHetuApiKeyInput] = useState<string>('');
+
+  // API Mode: 'hetu' (gateway) or 'gemini' (direct)
+  const [apiMode, setApiMode] = useState<ApiMode>(getApiMode);
+
+  // Machine ID for license binding
+  const [machineId, setMachineId] = useState<string>('加载中...');
   
   // Plugin Creator State
   const [isCreatingTool, setIsCreatingTool] = useState(false);
@@ -81,27 +103,64 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     }
   }, [selectedNodes.length]);
 
+  // Load machine ID on mount
+  useEffect(() => {
+    getMachineId().then(setMachineId);
+  }, []);
+
   // Check for API Key on component mount
   useEffect(() => {
     const checkApiKey = async () => {
+      // Check Electron API key (for Gemini direct mode)
       if (typeof window !== 'undefined' && (window as any).electronAPI) {
         try {
           const key = await (window as any).electronAPI.getApiKey();
           if (key) {
             setApiKey(key);
             setHasApiKey(true);
-            onLog('✅ API Key 已加载', 'success');
+            if (apiMode === 'gemini') {
+              onLog('✅ Gemini API Key 已加载', 'success');
+            }
           } else {
             setHasApiKey(false);
-            onLog('⚠️ 未配置 API Key', 'warning');
           }
         } catch (error) {
           console.error('Failed to get API key:', error);
         }
       }
+
+      // Check Hetu API key from global config
+      const storedHetuKey = getHetuApiKey();
+      if (storedHetuKey) {
+        setHetuApiKey(storedHetuKey);
+        setHasHetuApiKey(true);
+        if (apiMode === 'hetu') {
+          onLog('✅ 河图 API Key 已加载', 'success');
+        }
+      }
+
+      // Log current mode status
+      if (apiMode === 'hetu') {
+        onLog(`🌐 河图网关模式`, 'info');
+      } else {
+        onLog('🔗 直连 Gemini API 模式', 'info');
+      }
     };
     checkApiKey();
-  }, [onLog]);
+  }, [onLog, apiMode]);
+
+  // Handle API mode change
+  const handleApiModeChange = (mode: ApiMode) => {
+    setApiMode(mode);
+    saveApiMode(mode);
+    if (mode === 'hetu') {
+      onLog('🌐 切换至河图网关模式', 'info');
+    } else {
+      onLog('🔗 切换至直连 Gemini API 模式', 'info');
+    }
+    // Notify user to refresh for changes to take effect
+    onLog('⚠️ 刷新页面以应用新的 API 配置', 'warning');
+  };
 
   const handleTabChange = (tab: typeof activeTab) => {
       setActiveTab(tab);
@@ -144,6 +203,28 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         console.error('Failed to delete API key:', error);
       }
     }
+  };
+
+  // Hetu API Key handlers
+  const handleSaveHetuApiKey = () => {
+    if (!hetuApiKeyInput.trim()) {
+      onLog('❌ 河图 API Key 不能为空', 'error');
+      return;
+    }
+
+    saveHetuApiKey(hetuApiKeyInput.trim());
+    setHetuApiKey(hetuApiKeyInput.trim());
+    setHasHetuApiKey(true);
+    setHetuApiKeyInput('');
+    onLog('✅ 河图 API Key 已保存', 'success');
+  };
+
+  const handleDeleteHetuApiKey = () => {
+    removeHetuApiKey();
+    setHetuApiKey('');
+    setHasHetuApiKey(false);
+    setHetuApiKeyInput('');
+    onLog('🗑️ 河图 API Key 已删除', 'warning');
   };
 
   const handleSaveTool = () => {
@@ -993,7 +1074,147 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">系统设置 (System Config)</span>
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                {/* API Key Section */}
+                {/* API Mode Selector */}
+                <div className="space-y-3">
+                    <label className="text-[10px] uppercase font-bold text-slate-500 flex items-center gap-2">
+                        <Server className="w-3.5 h-3.5" /> API 模式
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                        <button
+                            onClick={() => handleApiModeChange('hetu')}
+                            className={`p-3 rounded border transition-all text-left ${
+                                apiMode === 'hetu'
+                                    ? 'bg-cyan-900/20 border-cyan-500/50 ring-1 ring-cyan-500/30'
+                                    : 'bg-slate-900 border-slate-700 hover:border-slate-600'
+                            }`}
+                        >
+                            <div className="flex items-center gap-2 mb-1">
+                                <Globe className={`w-4 h-4 ${apiMode === 'hetu' ? 'text-cyan-400' : 'text-slate-500'}`} />
+                                <span className={`text-xs font-bold ${apiMode === 'hetu' ? 'text-cyan-300' : 'text-slate-300'}`}>
+                                    河图网关
+                                </span>
+                            </div>
+                            <p className="text-[9px] text-slate-500">统一计费，无需 Gemini Key</p>
+                        </button>
+                        <button
+                            onClick={() => handleApiModeChange('gemini')}
+                            className={`p-3 rounded border transition-all text-left ${
+                                apiMode === 'gemini'
+                                    ? 'bg-purple-900/20 border-purple-500/50 ring-1 ring-purple-500/30'
+                                    : 'bg-slate-900 border-slate-700 hover:border-slate-600'
+                            }`}
+                        >
+                            <div className="flex items-center gap-2 mb-1">
+                                <Cpu className={`w-4 h-4 ${apiMode === 'gemini' ? 'text-purple-400' : 'text-slate-500'}`} />
+                                <span className={`text-xs font-bold ${apiMode === 'gemini' ? 'text-purple-300' : 'text-slate-300'}`}>
+                                    直连 Gemini
+                                </span>
+                            </div>
+                            <p className="text-[9px] text-slate-500">自带 Key，开发/自托管</p>
+                        </button>
+                    </div>
+                </div>
+
+                {/* Machine ID (shown when hetu mode) */}
+                {apiMode === 'hetu' && (
+                    <div className="p-3 bg-cyan-900/10 border border-cyan-900/30 rounded">
+                        <div className="flex items-center justify-between mb-1">
+                            <span className="text-[10px] uppercase font-bold text-slate-500 flex items-center gap-2">
+                                <Fingerprint className="w-3.5 h-3.5" /> 机器码
+                            </span>
+                            <button
+                                onClick={() => {
+                                    navigator.clipboard.writeText(machineId);
+                                    onLog('✅ 机器码已复制到剪贴板', 'success');
+                                }}
+                                className="text-[9px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
+                            >
+                                复制
+                            </button>
+                        </div>
+                        <div className="bg-slate-900 border border-slate-700 rounded px-3 py-2 font-mono text-sm text-cyan-300 tracking-wider text-center select-all">
+                            {machineId}
+                        </div>
+                        <p className="text-[9px] text-slate-500 mt-1.5">
+                            请将机器码提供给管理员以绑定您的 API Key
+                        </p>
+                    </div>
+                )}
+
+                {/* Hetu API Key Section (shown when hetu mode) */}
+                {apiMode === 'hetu' && (
+                    <div className="space-y-3">
+                        <label className="text-[10px] uppercase font-bold text-slate-500 flex items-center gap-2">
+                            <Key className="w-3.5 h-3.5" /> 河图 API Key
+                        </label>
+                        {hasHetuApiKey ? (
+                            <div className="bg-green-900/20 border border-green-500/30 rounded p-3 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs text-green-400 flex items-center gap-2">
+                                        <CheckCircle2 className="w-4 h-4" />
+                                        河图 API Key 已配置
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type={showHetuApiKey ? "text" : "password"}
+                                        value={showHetuApiKey ? hetuApiKey : '••••••••••••••••••••••••••'}
+                                        readOnly
+                                        className="flex-1 bg-slate-900 border border-slate-700 rounded px-3 py-2 text-xs text-slate-300 font-mono"
+                                    />
+                                    <button
+                                        onClick={() => setShowHetuApiKey(!showHetuApiKey)}
+                                        className="px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-xs transition-colors"
+                                    >
+                                        <Eye className="w-4 h-4 text-slate-400" />
+                                    </button>
+                                </div>
+                                <button
+                                    onClick={handleDeleteHetuApiKey}
+                                    className="w-full px-3 py-2 bg-red-900/30 hover:bg-red-900/50 border border-red-500/30 rounded text-xs text-red-400 transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                    删除河图 API Key
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="bg-yellow-900/20 border border-yellow-500/30 rounded p-3 space-y-3">
+                                <div className="flex items-center gap-2 text-yellow-400 text-xs">
+                                    <AlertTriangle className="w-4 h-4" />
+                                    未配置河图 API Key，AI 功能将无法使用
+                                </div>
+                                <input
+                                    type="text"
+                                    placeholder="输入您的河图 API Key (hetu_xxx_...)"
+                                    value={hetuApiKeyInput}
+                                    onChange={(e) => setHetuApiKeyInput(e.target.value)}
+                                    className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-xs text-slate-300 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500"
+                                />
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={handleSaveHetuApiKey}
+                                        className="flex-1 px-3 py-2 bg-cyan-600 hover:bg-cyan-500 rounded text-xs text-white font-medium transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        <Save className="w-3.5 h-3.5" />
+                                        保存 API Key
+                                    </button>
+                                    <a
+                                        href="https://hetu.dev"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-xs text-slate-300 transition-colors flex items-center gap-2"
+                                    >
+                                        <Globe className="w-3.5 h-3.5" />
+                                        注册
+                                    </a>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Gemini API Key Section (shown when direct mode) */}
+                {apiMode === 'gemini' && (
                 <div className="space-y-3">
                     <label className="text-[10px] uppercase font-bold text-slate-500 flex items-center gap-2">
                         <Key className="w-3.5 h-3.5" /> Gemini API Key
@@ -1062,6 +1283,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                         </div>
                     )}
                 </div>
+                )}
 
                 <div className="border-t border-slate-800/50"></div>
 
@@ -1206,7 +1428,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
 
       <div className="p-2 bg-slate-950 border-t border-slate-800 text-[10px] text-slate-500 flex justify-between items-center">
          <div className="flex items-center gap-2">
-             <span>OSINT Kernel v6.0</span>
+             <span>OSINT Kernel v6.1</span>
              <span className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-400">
                  {aiConfig.modelId.includes('flash') ? 'FLASH' : 'PRO'}
              </span>

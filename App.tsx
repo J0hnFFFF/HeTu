@@ -13,7 +13,7 @@ import { analyzeDataQuality, DataQualityReport } from './services/dataQualityEng
 import { AnalysisPanel } from './components/AnalysisPanel';
 import { ENTITY_DEFAULT_FIELDS } from './constants';
 import { DEFAULT_TOOLS } from './tools';
-import { Search, Layout, Save, FolderOpen, Network, Trash2, FileText, X, FileOutput, RefreshCw, Folder, ChevronDown, Plus, Camera, Layers, Edit3, GitBranch } from 'lucide-react';
+import { Search, Layout, Network, Trash2, FileText, X, FileOutput, RefreshCw, Folder, ChevronDown, Plus, Camera, Layers, Edit3, GitBranch } from 'lucide-react';
 import {
   saveAIConfig,
   loadAIConfig,
@@ -43,6 +43,7 @@ import {
   deleteSnapshot,
   cleanupSnapshots,
 } from './services/storageService';
+import { FeatureFlags } from './services/apiConfig';
 
 const uuid = () => Math.random().toString(36).substr(2, 9);
 
@@ -206,33 +207,6 @@ const App: React.FC = () => {
       return () => document.removeEventListener('click', handleClickOutside);
     }
   }, [showWorkspaceDropdown, showSnapshotDropdown]);
-
-  // --- Persistence: 手动保存图谱 ---
-  const handleSaveGraph = useCallback(async () => {
-    if (!currentCanvasId) return;
-    try {
-      await saveCanvasData(currentCanvasId, nodes, connections);
-      await saveLastUsed(currentProjectId!, currentCanvasId);
-      setHasUnsavedChanges(false);
-      addLog(`图谱已保存: ${nodes.length} 个节点, ${connections.length} 个连接`, 'success');
-    } catch (error) {
-      addLog(`保存图谱失败: ${error}`, 'error');
-    }
-  }, [nodes, connections, currentCanvasId, currentProjectId, addLog]);
-
-  // --- Persistence: 从本地加载图谱 ---
-  const handleLoadGraph = useCallback(async () => {
-    if (!currentCanvasId) return;
-    try {
-      const { nodes: savedNodes, connections: savedConnections } = await loadCanvasData(currentCanvasId);
-      setNodes(savedNodes);
-      setConnections(savedConnections);
-      setHasUnsavedChanges(false);
-      addLog(`已加载图谱: ${savedNodes.length} 个节点, ${savedConnections.length} 个连接`, 'success');
-    } catch (error) {
-      addLog(`加载图谱失败: ${error}`, 'error');
-    }
-  }, [currentCanvasId, addLog]);
 
   // --- 6.0: 画布切换 ---
   const handleSwitchCanvas = useCallback(async (canvasId: string) => {
@@ -1054,61 +1028,47 @@ const App: React.FC = () => {
           </button>
 
           <button
-              onClick={handleAnalyzeGraph}
-              title="分析网络 / Analyze Network (社区发现 & 核心人物)"
+              onClick={FeatureFlags.networkAnalysis() ? handleAnalyzeGraph : undefined}
+              disabled={!FeatureFlags.networkAnalysis()}
+              title={FeatureFlags.networkAnalysis() ? "分析网络 / Analyze Network (社区发现 & 核心人物)" : "需要河图网关模式 (高级功能)"}
               className={`bg-slate-900/90 backdrop-blur border rounded shadow-lg h-[50px] px-4 flex items-center justify-center gap-2 transition-all group ${
-                graphAnalysis
-                  ? 'border-purple-500 bg-purple-900/20'
-                  : 'border-slate-700 hover:border-purple-500 hover:bg-purple-900/20'
+                !FeatureFlags.networkAnalysis()
+                  ? 'border-slate-800 opacity-50 cursor-not-allowed'
+                  : graphAnalysis
+                    ? 'border-purple-500 bg-purple-900/20'
+                    : 'border-slate-700 hover:border-purple-500 hover:bg-purple-900/20'
               }`}
           >
-              <Network className={`w-4 h-4 transition-colors ${graphAnalysis ? 'text-purple-400' : 'text-slate-400 group-hover:text-purple-400'}`} />
-              <span className={`text-xs transition-colors ${graphAnalysis ? 'text-purple-400' : 'text-slate-400 group-hover:text-purple-400'}`}>
+              <Network className={`w-4 h-4 transition-colors ${!FeatureFlags.networkAnalysis() ? 'text-slate-600' : graphAnalysis ? 'text-purple-400' : 'text-slate-400 group-hover:text-purple-400'}`} />
+              <span className={`text-xs transition-colors ${!FeatureFlags.networkAnalysis() ? 'text-slate-600' : graphAnalysis ? 'text-purple-400' : 'text-slate-400 group-hover:text-purple-400'}`}>
                 {graphAnalysis ? `${graphAnalysis.communityCount} 社区` : '分析网络'}
               </span>
+              {!FeatureFlags.networkAnalysis() && <span className="text-[8px] text-yellow-600 ml-1">PRO</span>}
           </button>
-
-          <div className="flex items-center gap-1">
-            <button
-                onClick={handleSaveGraph}
-                title="保存图谱 / Save Graph"
-                className="bg-slate-900/90 backdrop-blur border border-slate-700 hover:border-cyan-500 rounded shadow-lg h-[50px] px-4 flex items-center justify-center gap-2 transition-all hover:bg-cyan-900/20 group relative"
-            >
-                <Save className="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" />
-                <span className="text-xs text-slate-400 group-hover:text-cyan-400">保存</span>
-                {hasUnsavedChanges && (
-                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-orange-500 rounded-full animate-pulse" title="有未保存的更改"></span>
-                )}
-            </button>
-            <button
-                onClick={handleLoadGraph}
-                title="加载图谱 / Load Graph"
-                className="bg-slate-900/90 backdrop-blur border border-slate-700 hover:border-slate-500 rounded shadow-lg h-[50px] px-4 flex items-center justify-center gap-2 transition-all hover:bg-slate-800/50 group"
-            >
-                <FolderOpen className="w-4 h-4 text-slate-400 group-hover:text-slate-300 transition-colors" />
-                <span className="text-xs text-slate-400 group-hover:text-slate-300">加载</span>
-            </button>
-          </div>
 
           {/* 6.0 快照按钮 */}
           <div className="relative" data-dropdown>
             <button
-              onClick={() => setShowSnapshotDropdown(!showSnapshotDropdown)}
-              title="快照 / Snapshots"
+              onClick={FeatureFlags.snapshot() ? () => setShowSnapshotDropdown(!showSnapshotDropdown) : undefined}
+              disabled={!FeatureFlags.snapshot()}
+              title={FeatureFlags.snapshot() ? "快照 / Snapshots" : "需要河图网关模式 (高级功能)"}
               className={`bg-slate-900/90 backdrop-blur border rounded shadow-lg h-[50px] px-4 flex items-center justify-center gap-2 transition-all group ${
-                snapshots.length > 0
-                  ? 'border-emerald-700 hover:border-emerald-500 hover:bg-emerald-900/20'
-                  : 'border-slate-700 hover:border-emerald-500 hover:bg-emerald-900/20'
+                !FeatureFlags.snapshot()
+                  ? 'border-slate-800 opacity-50 cursor-not-allowed'
+                  : snapshots.length > 0
+                    ? 'border-emerald-700 hover:border-emerald-500 hover:bg-emerald-900/20'
+                    : 'border-slate-700 hover:border-emerald-500 hover:bg-emerald-900/20'
               }`}
             >
-              <Camera className={`w-4 h-4 transition-colors ${snapshots.length > 0 ? 'text-emerald-400' : 'text-slate-400 group-hover:text-emerald-400'}`} />
-              <span className={`text-xs transition-colors ${snapshots.length > 0 ? 'text-emerald-400' : 'text-slate-400 group-hover:text-emerald-400'}`}>
+              <Camera className={`w-4 h-4 transition-colors ${!FeatureFlags.snapshot() ? 'text-slate-600' : snapshots.length > 0 ? 'text-emerald-400' : 'text-slate-400 group-hover:text-emerald-400'}`} />
+              <span className={`text-xs transition-colors ${!FeatureFlags.snapshot() ? 'text-slate-600' : snapshots.length > 0 ? 'text-emerald-400' : 'text-slate-400 group-hover:text-emerald-400'}`}>
                 {snapshots.length > 0 ? `快照(${snapshots.length})` : '快照'}
               </span>
-              <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${showSnapshotDropdown ? 'rotate-180' : ''}`} />
+              {FeatureFlags.snapshot() && <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${showSnapshotDropdown ? 'rotate-180' : ''}`} />}
+              {!FeatureFlags.snapshot() && <span className="text-[8px] text-yellow-600 ml-1">PRO</span>}
             </button>
 
-            {showSnapshotDropdown && (
+            {showSnapshotDropdown && FeatureFlags.snapshot() && (
               <div className="absolute top-full right-0 mt-1 w-80 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-50 overflow-hidden">
                 {/* 创建快照 */}
                 <div className="p-3 border-b border-slate-800">

@@ -27,3 +27,4 @@ dist-ssr
 .claude/*
 CLAUDE.md
 COMMERCIAL_LICENSE.md
+backend/*

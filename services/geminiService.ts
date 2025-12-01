@@ -1,22 +1,86 @@
 
-import { GoogleGenAI, Schema, Type } from "@google/genai";
+import { GoogleGenAI, Schema, Type, setDefaultBaseUrls } from "@google/genai";
 import { IntelNode, NodeType, Tool, Connection, ToolCategory, AIModelConfig } from "../types";
 import { ENTITY_DEFAULT_FIELDS } from "../constants";
+import { HETU_GATEWAY_URL, getApiMode, getHetuApiKey, isHetuMode } from "./apiConfig";
+
+// ============ API 配置 ============
+
+// Google Gemini 官方 API 地址
+const GEMINI_OFFICIAL_URL = 'https://generativelanguage.googleapis.com';
+
+// 配置 API 基础 URL
+let lastConfiguredMode: string | null = null;
+
+const configureApiBaseUrl = () => {
+  const mode = getApiMode();
+
+  if (mode === 'hetu' && lastConfiguredMode !== 'hetu') {
+    setDefaultBaseUrls({ geminiUrl: `${HETU_GATEWAY_URL}/gemini` });
+    lastConfiguredMode = 'hetu';
+    console.log('[AI] Using Hetu API Gateway:', HETU_GATEWAY_URL);
+  } else if (mode === 'gemini' && lastConfiguredMode !== 'gemini') {
+    // 直连模式 - 重置为 Google 官方 URL
+    setDefaultBaseUrls({ geminiUrl: GEMINI_OFFICIAL_URL });
+    lastConfiguredMode = 'gemini';
+    console.log('[AI] Using Direct Gemini API:', GEMINI_OFFICIAL_URL);
+  }
+};
+
+// 初始配置
+configureApiBaseUrl();
+
+// ============ API Key 获取 ============
 
 const getAI = async () => {
-  let apiKey = process.env.API_KEY;
+  // 每次获取 AI 实例时重新检查配置 (支持动态切换)
+  configureApiBaseUrl();
 
-  // 在 Electron 环境中，优先从本地存储获取 API Key
-  if (typeof window !== 'undefined' && (window as any).electronAPI) {
-    try {
-      const storedKey = await (window as any).electronAPI.getApiKey();
-      if (storedKey) apiKey = storedKey;
-    } catch (e) {
-      console.warn('Failed to get API key from Electron store:', e);
+  let apiKey: string | undefined;
+
+  // 模式1: 使用河图网关
+  if (isHetuMode()) {
+    // 优先从环境变量获取河图 API Key
+    apiKey = import.meta.env.VITE_HETU_API_KEY;
+
+    // 在 Electron 环境中，从本地存储获取
+    if (typeof window !== 'undefined' && (window as any).electronAPI) {
+      try {
+        const storedKey = await (window as any).electronAPI.getHetuApiKey?.();
+        if (storedKey) apiKey = storedKey;
+      } catch (e) {
+        console.warn('Failed to get Hetu API key from Electron store:', e);
+      }
+    }
+
+    // 从全局配置获取
+    if (!apiKey) {
+      apiKey = getHetuApiKey() || undefined;
+    }
+
+    if (!apiKey) {
+      throw new Error("请配置河图 API Key。在设置中输入您的 API Key。");
+    }
+  }
+  // 模式2: 直接使用 Gemini API Key (开发/自托管)
+  else {
+    apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.API_KEY;
+
+    // 在 Electron 环境中，从本地存储获取
+    if (typeof window !== 'undefined' && (window as any).electronAPI) {
+      try {
+        const storedKey = await (window as any).electronAPI.getApiKey();
+        if (storedKey) apiKey = storedKey;
+      } catch (e) {
+        console.warn('Failed to get API key from Electron store:', e);
+      }
+    }
+
+    if (!apiKey) {
+      throw new Error("请配置 Gemini API Key。在设置中输入您的 API Key。");
     }
   }
 
-  if (!apiKey) throw new Error("API Key not found. Please configure your Gemini API Key in settings.");
   return new GoogleGenAI({ apiKey });
 };
 
