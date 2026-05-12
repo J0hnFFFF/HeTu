@@ -6,6 +6,7 @@ import { MiniMap } from './MiniMap';
 import { MapModal } from './MapModal';
 import { MediaModal } from './MediaModal';
 import { getCommunityColorClass } from '../services/graphAnalysis';
+import { NODE_WIDTH } from '../constants';
 import {
   User, Globe, Image as ImageIcon, FileText,
   Link2, Network, Server, MapPin, Hash, Database, AtSign, Loader2,
@@ -265,11 +266,11 @@ export const NodeCard: React.FC<NodeCardProps> = ({
   return (
     <div
       data-node-id={node.id}
-      className={`absolute rounded-lg bg-[#161b26]/95 border ${borderColor} text-slate-200 flex flex-col transition-all duration-200`}
+      className={`absolute rounded-lg bg-[#161b26]/95 border ${borderColor} text-slate-200 flex flex-col transition-all duration-200 group`}
       style={{
         left: node.position.x,
         top: node.position.y,
-        width: 280, // Slightly wider for media
+        width: NODE_WIDTH,
         zIndex: isSelected ? 100 : 10,
         backdropFilter: 'blur(8px)',
         touchAction: 'none'

@@ -1,10 +1,25 @@
 
 
-import { NodeType } from './types';
+import { NodeType, FollowUpRule } from './types';
+
+export const NODE_WIDTH = 280;
 
 export const AI_MODELS = [
-  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash (高速/通用)', description: '适合大多数情报提取和摘要任务，速度快。' },
-  { id: 'gemini-3-pro-preview', name: 'Gemini 3.0 Pro (深度推理)', description: '适合复杂的逻辑分析、代码审计和心理侧写。' },
+  {
+    id: 'gemini-3-flash',
+    name: 'Gemini 3 Flash (高速/通用)',
+    description: 'Gemini 3 系列主力模型。GPQA 90.4%，速度是 2.5 Pro 的 3 倍，价格仅 1/4。适合绝大多数情报提取、关联分析和摘要任务。'
+  },
+  {
+    id: 'gemini-3-pro',
+    name: 'Gemini 3 Pro (深度推理)',
+    description: 'Gemini 3 旗舰模型。顶级推理与编码能力，1M 上下文窗口。适合复杂逻辑分析、代码审计、多跳推理和深度心理侧写。'
+  },
+  {
+    id: 'gemini-3-flash-lite',
+    name: 'Gemini 3.1 Flash-Lite (极速/低成本)',
+    description: '超低延迟、最高吞吐。输入 $0.25/M，输出 $1.50/M。适合批量实体分类、翻译、标签提取等高频低复杂度任务。'
+  },
 ];
 
 export const ENTITY_DEFAULT_FIELDS: Partial<Record<NodeType, Record<string, string>>> = {
@@ -355,3 +370,115 @@ export const ENTITY_DEFAULT_FIELDS: Partial<Record<NodeType, Record<string, stri
     "ID": "", "类型": "", "位置": "", "状态": ""
   }
 };
+
+/** 联动链最大深度（防止无限递归） */
+export const MAX_FOLLOW_UP_DEPTH = 3;
+
+/**
+ * 解析工具的最终联动规则。
+ * 逻辑：全局规则优先于 Tool.followUp（legacy）。
+ * 如果存在全局规则覆盖了 legacy，无论全局规则是否启用，legacy 都被忽略。
+ * 这样可以确保用户在"联动链"面板中的操作是最终生效的。
+ */
+export function resolveFollowUpRules(tool: { id: string; followUp?: { whenNodeType: NodeType; runToolId: string }[] }, followUpRules: FollowUpRule[]): { whenNodeType: NodeType; targetToolId: string }[] {
+  // 1. 收集该工具的所有全局规则 key（无论是否启用）
+  const globalKeys = new Set(
+    followUpRules
+      .filter(r => r.sourceToolId === tool.id)
+      .map(r => `${r.whenNodeType}:${r.targetToolId}`)
+  );
+
+  // 2. legacy 规则只在没有对应全局规则时才生效
+  const legacyRules = (tool.followUp || [])
+    .filter(fu => !globalKeys.has(`${fu.whenNodeType}:${fu.runToolId}`))
+    .map(fu => ({
+      whenNodeType: fu.whenNodeType,
+      targetToolId: fu.runToolId
+    }));
+
+  // 3. 启用的全局规则
+  const activeGlobalRules = followUpRules
+    .filter(r => r.sourceToolId === tool.id && r.isEnabled)
+    .map(r => ({
+      whenNodeType: r.whenNodeType,
+      targetToolId: r.targetToolId
+    }));
+
+  // 4. 合并去重（全局规则优先）
+  const ruleMap = new Map<string, { whenNodeType: NodeType; targetToolId: string }>();
+  for (const r of [...legacyRules, ...activeGlobalRules]) {
+    ruleMap.set(`${r.whenNodeType}:${r.targetToolId}`, r);
+  }
+
+  return Array.from(ruleMap.values());
+}
+
+/** 默认工具联动规则 - 与 Tool 定义解耦，便于用户自定义 */
+export const DEFAULT_FOLLOW_UP_RULES: FollowUpRule[] = [
+  // 1. 子域名发现 → DNS 解析
+  {
+    id: 'default-subdomain-dns',
+    sourceToolId: 'api_ssl_subdomains',
+    whenNodeType: NodeType.DOMAIN,
+    targetToolId: 'api_dns_resolve',
+    isEnabled: true,
+    isUserDefined: false
+  },
+  // 2. DNS 解析 → Shodan 主机扫描
+  {
+    id: 'default-dns-shodan',
+    sourceToolId: 'api_dns_resolve',
+    whenNodeType: NodeType.IP_ADDRESS,
+    targetToolId: 'api_shodan',
+    isEnabled: true,
+    isUserDefined: false
+  },
+  // 3. DNS 解析 → VirusTotal 扫描
+  {
+    id: 'default-dns-vt',
+    sourceToolId: 'api_dns_resolve',
+    whenNodeType: NodeType.IP_ADDRESS,
+    targetToolId: 'api_virustotal',
+    isEnabled: true,
+    isUserDefined: false
+  },
+  // 4. URL 扫描 → DNS 解析（发现域名后）
+  {
+    id: 'default-urlscan-dns',
+    sourceToolId: 'api_urlscan',
+    whenNodeType: NodeType.DOMAIN,
+    targetToolId: 'api_dns_resolve',
+    isEnabled: true,
+    isUserDefined: false
+  },
+  // 注：URLScan 发现的 URL 节点不再直接触发 VirusTotal，
+  // 因为 api_virustotal 的 paramMapping 期望 'IP地址' 字段，URL 节点不具备。
+  // URLScan → DOMAIN → DNS → IP 的间接链已覆盖此场景。
+  // 5. 实体提取 → GitHub 侦察
+  {
+    id: 'default-entity-github',
+    sourceToolId: 'agent_entity_extract',
+    whenNodeType: NodeType.ENTITY,
+    targetToolId: 'mcp_github_recon',
+    isEnabled: true,
+    isUserDefined: false
+  },
+  // 7. 实体提取 → LinkedIn 职场
+  {
+    id: 'default-entity-linkedin',
+    sourceToolId: 'agent_entity_extract',
+    whenNodeType: NodeType.ENTITY,
+    targetToolId: 'mcp_linkedin_lookup',
+    isEnabled: true,
+    isUserDefined: false
+  },
+  // 8. 网页内容提取 → 实体提取（默认禁用，避免过度联动）
+  {
+    id: 'default-web-entity',
+    sourceToolId: 'mcp_web_content_extract',
+    whenNodeType: NodeType.ENTITY,
+    targetToolId: 'agent_entity_extract',
+    isEnabled: false,
+    isUserDefined: false
+  },
+];

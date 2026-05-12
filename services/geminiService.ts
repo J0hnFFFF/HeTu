@@ -1,10 +1,16 @@
 
 import { GoogleGenAI, Schema, Type } from "@google/genai";
-import { IntelNode, NodeType, Tool, Connection, ToolCategory, AIModelConfig } from "../types";
+import { IntelNode, NodeType, Tool, Connection, ToolCategory, AIModelConfig, ExternalApiKeys } from "../types";
 import { ENTITY_DEFAULT_FIELDS } from "../constants";
+import { fetchApiWithFallback } from "./apiService";
 
 const getAI = async () => {
-  let apiKey = process.env.API_KEY;
+  let apiKey: string | undefined;
+  try {
+    apiKey = typeof process !== 'undefined' && process.env ? process.env.API_KEY : undefined;
+  } catch {
+    apiKey = undefined;
+  }
 
   // 在 Electron 环境中，优先从本地存储获取 API Key
   if (typeof window !== 'undefined' && (window as any).electronAPI) {
@@ -85,29 +91,7 @@ const parseJsonResponse = (text: string): any => {
   throw new Error(`无法解析 AI 响应为 JSON。响应内容预览: ${preview}`);
 };
 
-/**
- * MOCK API HANDLER
- * Simulates fetching data from external OSINT APIs
- */
-const fetchMockApiData = async (tool: Tool, node: IntelNode): Promise<any> => {
-    console.log(`[API] Simulating request to ${tool.apiConfig?.endpoint}`);
-    
-    // Simulate network latency
-    await new Promise(resolve => setTimeout(resolve, 1500));
 
-    // Return the mock response defined in the tool, potentially modified by input
-    const mockData = tool.apiConfig?.mockResponse || {};
-    
-    // Dynamic injection for realism (injecting the queried IP/Domain into the mock response)
-    if (tool.targetTypes.includes(NodeType.IP_ADDRESS) && node.data['IP地址']) {
-        // Deep clone and inject
-        const resp = JSON.parse(JSON.stringify(mockData));
-        if (resp.data?.attributes) resp.data.attributes.ip_address = node.data['IP地址'];
-        return resp;
-    }
-    
-    return mockData;
-};
 
 /**
  * CORE EXECUTION ENGINE
@@ -116,7 +100,8 @@ export const executeTool = async (
   tool: Tool,
   node: IntelNode,
   allNodes: IntelNode[],
-  aiConfig: AIModelConfig
+  aiConfig: AIModelConfig,
+  apiKeys: ExternalApiKeys = {}
 ): Promise<{ newNodes: IntelNode[], newConnections: Connection[], updateData?: any }> => {
   try {
     const ai = await getAI();
@@ -133,9 +118,10 @@ export const executeTool = async (
     
     // STRATEGY: API TOOL
     if (tool.category === ToolCategory.API && tool.apiConfig) {
-        const apiResult = await fetchMockApiData(tool, node);
+        const apiResult = await fetchApiWithFallback(tool, node, apiKeys);
+        const isReal = !tool.isSimulated || (tool.id.includes('virustotal') && apiKeys.virustotal) || (tool.id.includes('shodan') && apiKeys.shodan) || (tool.id.includes('flightaware') && apiKeys.flightaware);
         finalPrompt = `
-        [API EXECUTION MODE]
+        [API EXECUTION MODE${isReal ? ' - REAL DATA' : ' - SIMULATED'}]
         TARGET: ${node.title}
         API ENDPOINT: ${tool.apiConfig.endpoint}
         
@@ -146,6 +132,7 @@ export const executeTool = async (
         ${tool.promptTemplate}
         
         Parse the API response above and extract intelligence according to the instruction.
+        ${!isReal ? '\n注意：以上为模拟数据，仅供演示。' : ''}
         `;
     }
     
@@ -282,8 +269,45 @@ CRITICAL: Your response MUST be valid JSON with this exact structure:
     });
 
     // Handle response (Potential grounding metadata for MCP)
-    const resultText = response.text || "{}";
-    const result = parseJsonResponse(resultText);
+    let resultText = response.text || "{}";
+    let result: any;
+    let retryCount = 0;
+    const maxRetries = toolsConfig.length > 0 ? 2 : 0;
+
+    while (retryCount <= maxRetries) {
+      try {
+        result = parseJsonResponse(resultText);
+        break;
+      } catch (parseError) {
+        if (retryCount >= maxRetries) {
+          throw new Error(`JSON 解析失败（已重试 ${maxRetries} 次）: ${(parseError as Error).message}`);
+        }
+        
+        const correctionPrompt = `你的输出不是有效 JSON。错误：${(parseError as Error).message}。请仅输出纯 JSON，不要 markdown 代码块。原始输出前500字符：${resultText.substring(0, 500)}`;
+        
+        // 重试时不再使用 tools（搜索已完成），可以启用原生 Schema 强制
+        const correctionConfig: any = {
+          systemInstruction: systemInstruction,
+          responseMimeType: "application/json",
+          responseSchema: graphSchema,
+          temperature: 0.1 // 低温度减少创意
+        };
+        
+        const correctionResponse = await ai.models.generateContent({
+          model: aiConfig.modelId,
+          contents: [
+            { role: 'user', parts: userContentParts },
+            { role: 'model', parts: [{ text: resultText }] },
+            { role: 'user', parts: [{ text: correctionPrompt }] }
+          ],
+          config: correctionConfig
+        });
+        
+        resultText = correctionResponse.text || "{}";
+        retryCount++;
+        console.warn(`[executeTool] JSON parse failed, retry ${retryCount}/${maxRetries} for tool ${tool.id}`);
+      }
+    }
     
     // Helper: Convert KV Array back to Object
     const kvToObject = (arr: any[]) => {
@@ -362,7 +386,7 @@ export interface BriefingContext {
     keyNodes?: string[];
 }
 
-export const generateFinalReport = async (context: BriefingContext): Promise<string> => {
+export const generateFinalReport = async (context: BriefingContext, modelId?: string): Promise<string> => {
     const ai = await getAI();
 
     // 1. 构建实体列表
@@ -443,7 +467,7 @@ ${keyNodesInfo}
 `;
 
     const res = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: modelId || 'gemini-3-flash',
         contents: prompt
     });
     return res.text || "生成失败";

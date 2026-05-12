@@ -188,6 +188,17 @@ export interface Tool {
   autoExpand: boolean;
   isCustom?: boolean;
   isSimulated?: boolean; // To mark if the tool uses mock data or real AI/Search
+  isDeprecated?: boolean; // Mark tools with reliability/accuracy issues
+  deprecationReason?: string;
+  
+  /** 
+   * 工具联动（已迁移到全局 FollowUpRule，保留用于向后兼容）
+   * @deprecated 使用全局 followUpRules 替代
+   */
+  followUp?: {
+    whenNodeType: NodeType;
+    runToolId: string;
+  }[];
   
   // 1. Agent Config
   promptTemplate?: string; 
@@ -196,7 +207,15 @@ export interface Tool {
   apiConfig?: {
     endpoint: string;
     method: 'GET' | 'POST';
-    mockResponse?: any; // For simulation purposes
+    headers?: Record<string, string>;
+    queryParams?: Record<string, string>;
+    body?: any;
+    /** 参数映射: { urlParam: 'data.fieldName' } 用于从 node.data 中提取值替换 URL */
+    paramMapping?: Record<string, string>;
+    /** API Key 注入位置: 'headers.x-apikey' | 'queryParams.api_key' */
+    apiKeyField?: string;
+    /** 当真实 API 调用失败时的 Mock 回退数据 */
+    mockResponse?: any;
   };
 
   // 3. MCP Config (Function Calling)
@@ -218,6 +237,30 @@ export interface AIModelConfig {
   temperature: number;
   enableThinking: boolean;
   thinkingBudget: number;
+}
+
+/** 第三方情报 API Key 配置 */
+export interface ExternalApiKeys {
+  virustotal?: string;
+  shodan?: string;
+  flightaware?: string;
+  hibp?: string;            // Have I Been Pwned
+  urlscan?: string;         // URLScan.io
+  etherscan?: string;       // Etherscan
+  securitytrails?: string;  // SecurityTrails
+  otx?: string;             // AlienVault OTX
+  opencorporates?: string;  // OpenCorporates
+  serpapi?: string;         // SerpAPI (multi-engine search)
+}
+
+/** 工具联动规则 - 全局配置，与 Tool 解耦 */
+export interface FollowUpRule {
+  id: string;
+  sourceToolId: string;     // 触发工具ID
+  whenNodeType: NodeType;   // 匹配节点类型
+  targetToolId: string;     // 执行工具ID
+  isEnabled: boolean;       // 是否启用
+  isUserDefined: boolean;   // 是否用户自定义（用户自定义可删除）
 }
 
 // ============ 6.0 多画布工作区 ============

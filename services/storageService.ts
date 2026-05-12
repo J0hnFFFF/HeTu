@@ -1,12 +1,12 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { nanoid } from 'nanoid';
 import {
-  IntelNode, Connection, Tool, AIModelConfig,
+  IntelNode, Connection, Tool, AIModelConfig, FollowUpRule,
   Project, CanvasData, Snapshot, SnapshotData, SnapshotTrigger
 } from '../types';
 
 const DB_NAME = 'nexus-osint-db';
-const DB_VERSION = 2;  // 升级版本触发迁移
+const DB_VERSION = 3;  // v3: 新增 followUpRules 表
 
 // 默认项目和画布 ID
 const DEFAULT_PROJECT_ID = 'default-project';
@@ -50,6 +50,10 @@ interface NexusDBSchema extends DBSchema {
     key: string;
     value: SnapshotData;
   };
+  followUpRules: {
+    key: string;
+    value: FollowUpRule;
+  };
 }
 
 let dbInstance: IDBPDatabase<NexusDBSchema> | null = null;
@@ -92,6 +96,11 @@ const getDB = async (): Promise<IDBPDatabase<NexusDBSchema>> => {
       // 6.0: 快照数据表
       if (!db.objectStoreNames.contains('snapshotData')) {
         db.createObjectStore('snapshotData', { keyPath: 'snapshotId' });
+      }
+
+      // v3: 联动规则表
+      if (!db.objectStoreNames.contains('followUpRules')) {
+        db.createObjectStore('followUpRules', { keyPath: 'id' });
       }
 
       // 节点表 - 处理迁移
@@ -256,9 +265,13 @@ export const deleteProject = async (projectId: string): Promise<void> => {
   // 获取项目下所有画布
   const canvases = await db.getAllFromIndex('canvases', 'by-project', projectId);
 
-  // 删除每个画布及其数据
+  // 删除每个画布及其数据（容错：单个画布删除失败不中断）
   for (const canvas of canvases) {
-    await deleteCanvas(canvas.id);
+    try {
+      await deleteCanvas(canvas.id);
+    } catch (e) {
+      console.error(`Failed to delete canvas ${canvas.id}:`, e);
+    }
   }
 
   // 删除项目
@@ -523,6 +536,28 @@ export const cleanupSnapshots = async (canvasId: string, keepCount: number = 20)
   }
 
   return toDelete.length;
+};
+
+// ============ 联动规则管理 ============
+
+export const saveFollowUpRules = async (rules: FollowUpRule[]): Promise<void> => {
+  const db = await getDB();
+  const tx = db.transaction('followUpRules', 'readwrite');
+  const store = tx.objectStore('followUpRules');
+  await store.clear();
+  // 只保存需要持久化的规则：
+  // 1. 用户自定义规则（始终保存）
+  // 2. 被禁用的默认规则（保存其禁用状态，覆盖默认值）
+  const rulesToSave = rules.filter(r => r.isUserDefined || !r.isEnabled);
+  for (const rule of rulesToSave) {
+    await store.put(rule);
+  }
+  await tx.done;
+};
+
+export const loadFollowUpRules = async (): Promise<FollowUpRule[]> => {
+  const db = await getDB();
+  return db.getAll('followUpRules');
 };
 
 // ============ 兼容旧 API（保持向后兼容） ============

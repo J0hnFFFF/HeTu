@@ -8,14 +8,16 @@ export const DEFAULT_TOOLS: Tool[] = [
   {
     id: 'agent_profiler',
     category: ToolCategory.AGENT,
-    name: '心理侧写 (Profiler)',
-    version: '2.1',
+    name: '文本情绪分析 (Sentiment)',
+    version: '2.2',
     author: 'Nexus Mind',
-    description: '基于文本分析目标的心理状态、情绪及潜在动机。',
+    description: '[实验性] 基于文本分析情绪倾向和语言特征。结果仅供辅助参考，不构成心理诊断。',
     targetTypes: [NodeType.NOTE, NodeType.SOCIAL_POST, NodeType.EMAIL, NodeType.REPORT],
-    promptTemplate: "分析目标的心理状态。\n1. 评估情绪极性（正面/负面/中性）。\n2. 识别具体情绪（愤怒、恐惧、焦虑、自信）。\n3. 检测是否存在欺骗性语言特征（如过度强调、回避细节）。\n4. 推测作者的教育程度和可能的职业背景。",
+    promptTemplate: "分析文本的情绪和语言特征。\n1. 评估情绪极性（正面/负面/中性）。\n2. 识别具体情绪（愤怒、恐惧、焦虑、自信）。\n3. 检测是否存在欺骗性语言特征（如过度强调、回避细节）。\n4. 分析写作风格和可能的职业背景线索。\n\n注意：以上分析基于文本统计特征，不能替代专业心理评估。",
     autoExpand: false,
-    isSimulated: false
+    isSimulated: false,
+    isDeprecated: true,
+    deprecationReason: 'AI心理分析的准确率极低，容易产生偏见和误判。已降级为文本情绪分析。'
   },
   {
     id: 'agent_visual_forensics',
@@ -104,14 +106,16 @@ export const DEFAULT_TOOLS: Tool[] = [
   {
     id: 'agent_deepfake',
     category: ToolCategory.AGENT,
-    name: 'Deepfake 检测',
+    name: 'Deepfake 检测 [实验]',
     version: 'Beta',
     author: 'TruthLens',
-    description: '辅助分析视频/图片是否为 AI 生成。',
+    description: '[实验性/低置信度] 辅助分析视频/图片是否为 AI 生成。最新生成模型已修复多数传统伪影，结果不可作为证据。',
     targetTypes: [NodeType.IMAGE, NodeType.VIDEO],
-    promptTemplate: "寻找 AI 生成内容的常见伪影：\n1. 手指数量或形状异常。\n2. 背景纹理的不连贯。\n3. 瞳孔反射不一致。\n4. 边缘模糊或过度平滑。\n给出真实性概率评估。",
+    promptTemplate: "分析图像/视频是否存在 AI 生成迹象。\n1. 检查物理一致性（光影、反射、物理规律）。\n2. 检查生物特征合理性（面部对称性、皮肤纹理）。\n3. 检查环境一致性（透视、景深、物理交互）。\n4. 注意：最新 AI 模型（Sora、可灵等）已大幅改善生成质量，传统伪影检测方法可能失效。\n\n输出时请明确标注：此分析仅供初步筛查，不能替代专业取证工具（如 Microsoft Video Authenticator）。",
     autoExpand: false,
-    isSimulated: false
+    isSimulated: false,
+    isDeprecated: true,
+    deprecationReason: 'AI视觉模型检测deepfake准确率仅60-70%，且传统伪影清单已过时。结果不可作为证据。'
   },
   {
     id: 'agent_data_cleaner',
@@ -161,7 +165,7 @@ export const DEFAULT_TOOLS: Tool[] = [
   {
     id: 'mcp_linkedin_lookup',
     category: ToolCategory.MCP,
-    name: 'LinkedIn 职场 (Live)',
+    name: 'LinkedIn 职场 (Search)',
     version: 'Live',
     author: 'LinkedIn',
     description: '【真实】查找职业背景、任职公司和同事关系。',
@@ -174,7 +178,7 @@ export const DEFAULT_TOOLS: Tool[] = [
   {
     id: 'mcp_telegram_search',
     category: ToolCategory.MCP,
-    name: 'Telegram 频道 (Live)',
+    name: 'Telegram 频道 (Search)',
     version: 'Live',
     author: 'Telegram',
     description: '【真实】检索公开的 Telegram 频道和群组预览。',
@@ -200,15 +204,25 @@ export const DEFAULT_TOOLS: Tool[] = [
     isSimulated: false
   },
   {
-    id: 'mcp_ssl_subdomains',
-    category: ToolCategory.MCP,
-    name: 'SSL 子域名发现 (Live)',
-    version: 'Live',
-    author: 'Crt.sh',
-    description: '【真实】通过 SSL 证书透明度记录查找子域名。',
+    id: 'api_ssl_subdomains',
+    category: ToolCategory.API,
+    name: '子域名发现 (SecurityTrails)',
+    version: 'v1',
+    author: 'SecurityTrails',
+    description: '【真实】通过 SecurityTrails API 查询子域名和 DNS 历史记录。',
     targetTypes: [NodeType.DOMAIN],
-    mcpConfig: { functionName: 'googleSearch' },
-    promptTemplate: "搜索 crt.sh 或其他证书透明度日志，查找该域名的子域名 (Subdomains)。\n列出所有发现的唯一子域名。",
+    apiConfig: {
+        endpoint: 'https://api.securitytrails.com/v1/domain/{target}/subdomains',
+        method: 'GET',
+        headers: {},
+        paramMapping: { target: '域名' },
+        apiKeyField: 'headers.apikey',
+        mockResponse: {
+            "subdomains": ["www", "mail", "api", "admin", "blog"],
+            "subdomain_count": 5
+        }
+    },
+    promptTemplate: "基于 SecurityTrails 数据，分析该域名的子域名情况。\n1. 列出所有发现的子域名。\n2. 识别高危子域名（如 admin、panel、test、dev）。\n3. 为每个子域名创建 DOMAIN 节点。",
     autoExpand: true,
     isSimulated: false
   },
@@ -254,16 +268,27 @@ export const DEFAULT_TOOLS: Tool[] = [
     isSimulated: false
   },
   {
-    id: 'mcp_breach_check',
-    category: ToolCategory.MCP,
-    name: '泄露数据检索 (Live)',
-    version: 'Live',
-    author: 'LeakCheck',
-    description: '【真实】搜索该邮箱/用户是否出现在公开泄露事件中。',
-    targetTypes: [NodeType.EMAIL, NodeType.ENTITY],
-    mcpConfig: { functionName: 'googleSearch' },
-    promptTemplate: "搜索该邮箱/用户名是否出现在公开的数据泄露列表、Pastebin 或安全论坛中。\n注意：仅查找提及记录，确认涉及哪些网站的泄露（如 LinkedIn Breach, Adobe Breach）。",
-    autoExpand: false,
+    id: 'api_breach_check',
+    category: ToolCategory.API,
+    name: '泄露数据检索 (HIBP)',
+    version: 'v3',
+    author: 'Have I Been Pwned',
+    description: '【真实】查询邮箱是否出现在已知数据泄露事件中。需要 HIBP API Key。',
+    targetTypes: [NodeType.EMAIL],
+    apiConfig: {
+        endpoint: 'https://haveibeenpwned.com/api/v3/breachedaccount/{target}',
+        method: 'GET',
+        headers: {},
+        paramMapping: { target: '邮箱地址' },
+        apiKeyField: 'headers.hibp-api-key',
+        mockResponse: {
+            "breaches": [
+                { "Name": "LinkedIn", "Title": "LinkedIn", "Domain": "linkedin.com", "BreachDate": "2012-05-05", "PwnCount": 164611595, "Description": "..." }
+            ]
+        }
+    },
+    promptTemplate: "基于 Have I Been Pwned 数据，分析该邮箱的泄露历史。\n1. 列出所有涉及的泄露事件名称和日期。\n2. 统计受影响账户数量。\n3. 评估密码重用风险。\n4. 建议用户采取的措施（修改密码、启用2FA）。",
+    autoExpand: true,
     isSimulated: false
   },
 
@@ -321,37 +346,29 @@ export const DEFAULT_TOOLS: Tool[] = [
     isSimulated: false
   },
   {
-    id: 'mcp_dns_resolve',
-    category: ToolCategory.MCP,
-    name: '域名DNS解析 (Live)',
-    version: 'Live',
-    author: 'OSINT',
-    description: '【真实】解析域名的DNS记录，获取关联IP地址。',
+    id: 'api_dns_resolve',
+    category: ToolCategory.API,
+    name: 'DNS 解析 (Cloudflare DoH)',
+    version: 'v1',
+    author: 'Cloudflare',
+    description: '【真实】通过 Cloudflare DNS over HTTPS 解析域名记录。无需 API Key。',
     targetTypes: [NodeType.DOMAIN],
-    mcpConfig: { functionName: 'googleSearch' },
-    promptTemplate: `搜索该域名的DNS解析记录信息。
-
-查询内容：
-1. **A记录** - 域名指向的IPv4地址
-2. **AAAA记录** - 域名指向的IPv6地址
-3. **MX记录** - 邮件服务器地址
-4. **NS记录** - 域名服务器
-5. **TXT记录** - SPF、DKIM等验证信息
-6. **CNAME记录** - 别名指向
-
-搜索方法：
-- site:dnschecker.org "域名"
-- site:mxtoolbox.com "域名"
-- "域名" DNS records A AAAA MX
-- site:securitytrails.com "域名"
-
-为发现的每个IP地址创建 IP_ADDRESS 类型节点，包含：
-- IP地址
-- 记录类型（A/AAAA/MX等）
-- 地理位置（如果能确定）
-- 所属ISP/托管商
-
-同时更新原域名节点的 NameServer 属性。`,
+    apiConfig: {
+        endpoint: 'https://cloudflare-dns.com/dns-query',
+        method: 'GET',
+        headers: { accept: 'application/dns-json' },
+        queryParams: { name: '{target}', type: 'A' },
+        paramMapping: { target: '域名' },
+        mockResponse: {
+            "DoH": true,
+            "domain": "example.com",
+            "records": {
+                "A": { "Status": 0, "Answer": [{ "name": "example.com", "type": 1, "TTL": 300, "data": "93.184.216.34" }] },
+                "MX": { "Status": 0, "Answer": [{ "name": "example.com", "type": 15, "TTL": 300, "data": "10 mail.example.com" }] }
+            }
+        }
+    },
+    promptTemplate: "基于 Cloudflare DoH 查询结果，分析该域名的 DNS 记录。\n1. 列出 A/AAAA/MX/NS/TXT 记录。\n2. 为每个 IP 地址创建 IP_ADDRESS 节点。\n3. 分析邮件服务器（MX）和域名服务器（NS）的潜在情报价值。\n4. 检查 TXT 记录中的 SPF/DKIM 信息。",
     autoExpand: true,
     isSimulated: false
   },
@@ -421,7 +438,7 @@ export const DEFAULT_TOOLS: Tool[] = [
     version: 'Live',
     author: 'SwiftRef',
     description: '【真实】查找银行 SWIFT 代码对应的分行信息。',
-    targetTypes: [NodeType.ORGANIZATION, NodeType.NOTE],
+    targetTypes: [NodeType.ORGANIZATION, NodeType.BANK_ACCOUNT],
     mcpConfig: { functionName: 'googleSearch' },
     promptTemplate: "搜索该 SWIFT/BIC 代码对应的具体银行名称、分行地址和国家。",
     autoExpand: false,
@@ -441,16 +458,27 @@ export const DEFAULT_TOOLS: Tool[] = [
     isSimulated: false
   },
   {
-    id: 'mcp_etherscan_live',
-    category: ToolCategory.MCP,
-    name: 'Etherscan 追踪 (Live)',
-    version: 'Live',
+    id: 'api_etherscan',
+    category: ToolCategory.API,
+    name: 'ETH 链上追踪 (Etherscan)',
+    version: 'v2',
     author: 'Etherscan',
-    description: '【真实】通过搜索公开账本浏览器查询钱包动态。',
+    description: '【真实】查询以太坊地址余额、交易历史和代币持仓。需要 Etherscan API Key。',
     targetTypes: [NodeType.CRYPTO_WALLET],
-    mcpConfig: { functionName: 'googleSearch' },
-    promptTemplate: "搜索 Etherscan 或其他区块链浏览器关于该钱包地址的记录。提取：\n1. 当前余额。\n2. 最近的一笔主要交易时间。\n3. 是否被打上 'Phish' 或 'Hack' 的标签。",
-    autoExpand: true,
+    apiConfig: {
+        endpoint: 'https://api.etherscan.io/api',
+        method: 'GET',
+        queryParams: { module: 'account', action: 'balance', address: '{target}', tag: 'latest' },
+        paramMapping: { target: '钱包地址' },
+        apiKeyField: 'queryParams.apikey',
+        mockResponse: {
+            "status": "1",
+            "message": "OK",
+            "result": "1234567890123456789"
+        }
+    },
+    promptTemplate: "基于 Etherscan 链上数据分析该以太坊钱包。\n1. 当前 ETH 余额（转换为 ETH 单位）。\n2. 交易活跃度评估。\n3. 是否关联已知恶意地址。\n4. 地址类型判断（个人钱包/合约/交易所）。\n\n注意：此工具仅查询 ETH 主网。",
+    autoExpand: false,
     isSimulated: false
   },
 
@@ -461,14 +489,17 @@ export const DEFAULT_TOOLS: Tool[] = [
   {
     id: 'api_virustotal',
     category: ToolCategory.API,
-    name: 'VirusTotal (Sim)',
+    name: 'VirusTotal (Live)',
     version: 'v3',
     author: 'Google',
-    description: '【模拟】查询威胁情报 (需 API Key)。',
+    description: '【真实】查询 IP / 文件哈希的威胁情报、恶意软件分析和社区评分。',
     targetTypes: [NodeType.IP_ADDRESS, NodeType.FILE_HASH],
     apiConfig: {
-        endpoint: 'https://www.virustotal.com/api/v3/ip_addresses/',
+        endpoint: 'https://www.virustotal.com/api/v3/ip_addresses/{target}',
         method: 'GET',
+        headers: {},
+        paramMapping: { target: 'IP地址' },
+        apiKeyField: 'headers.x-apikey',
         mockResponse: {
             "data": {
                 "attributes": {
@@ -480,21 +511,24 @@ export const DEFAULT_TOOLS: Tool[] = [
             }
         }
     },
-    promptTemplate: "基于模拟的 VT 数据：1. 判断威胁等级。2. 提取 ASN。3. 关联攻击组织标签。",
+    promptTemplate: "基于 VirusTotal 数据：1. 判断威胁等级（根据 harmless/malicious/suspicious 比例）。2. 提取 ASN 和网络信息。3. 关联攻击组织标签。4. 给出社区评分和结论。",
     autoExpand: true,
-    isSimulated: true
+    isSimulated: false
   },
   {
     id: 'api_shodan',
-    name: 'Shodan Host (Sim)',
+    name: 'Shodan Host (Live)',
     category: ToolCategory.API,
     version: '2.0',
     author: 'Shodan',
-    description: '【模拟】查询端口暴露情况 (需 API Key)。',
+    description: '【真实】查询 IP 的开放端口、服务指纹、CVE 漏洞和地理位置。',
     targetTypes: [NodeType.IP_ADDRESS],
     apiConfig: {
-        endpoint: 'https://api.shodan.io/shodan/host/',
+        endpoint: 'https://api.shodan.io/shodan/host/{target}',
         method: 'GET',
+        queryParams: {},
+        paramMapping: { target: 'IP地址' },
+        apiKeyField: 'queryParams.key',
         mockResponse: {
             "ports": [22, 80, 443, 3389],
             "os": "Linux 4.x",
@@ -502,28 +536,31 @@ export const DEFAULT_TOOLS: Tool[] = [
             "data": [{ "port": 22, "product": "OpenSSH" }]
         }
     },
-    promptTemplate: "分析开放端口和 CVE 漏洞。",
+    promptTemplate: "分析 Shodan 扫描结果：1. 列出所有开放端口及对应服务。2. 识别操作系统和设备类型。3. 分析 CVE 漏洞风险。4. 提取地理位置和 ISP 信息。5. 判断是否为蜜罐或云主机。",
     autoExpand: true,
-    isSimulated: true
+    isSimulated: false
   },
   {
     id: 'api_flightaware',
-    name: 'FlightAware (Sim)',
+    name: 'FlightAware (Live)',
     category: ToolCategory.API,
     version: '4.0',
     author: 'FlightAware',
-    description: '【模拟】航班实时追踪。',
-    targetTypes: [NodeType.VEHICLE],
+    description: '【真实】航班实时追踪、航线历史和机场信息查询。',
+    targetTypes: [NodeType.VEHICLE, NodeType.FLIGHT],
     apiConfig: {
-        endpoint: 'https://aeroapi.flightaware.com/',
+        endpoint: 'https://aeroapi.flightaware.com/aeroapi/flights/{target}',
         method: 'GET',
+        headers: { 'x-apikey': '' },
+        paramMapping: { target: '航班号' },
+        apiKeyField: 'headers.x-apikey',
         mockResponse: {
             "flights": [{ "ident": "N12345", "origin": "KJFK", "destination": "EGLL", "status": "En Route" }]
         }
     },
-    promptTemplate: "追踪飞机航程。",
+    promptTemplate: "基于 FlightAware 数据追踪航班：1. 当前飞行状态和位置。2. 出发地和目的地机场。3. 预计到达时间。4. 机型和航空公司信息。5. 历史航线记录。",
     autoExpand: true,
-    isSimulated: true
+    isSimulated: false
   },
 
   // ============================================
@@ -690,28 +727,42 @@ export const DEFAULT_TOOLS: Tool[] = [
   },
 
   {
-    id: 'mcp_urlscan',
-    category: ToolCategory.MCP,
+    id: 'api_urlscan',
+    category: ToolCategory.API,
     name: 'URL威胁扫描 (URLScan)',
-    version: 'Live',
+    version: 'v1',
     author: 'URLScan.io',
-    description: '【真实】扫描URL并分析钓鱼、恶意脚本、重定向链',
-    targetTypes: [NodeType.URL, NodeType.DOMAIN, NodeType.PHISHING_KIT, NodeType.DARKWEB_SITE],
-    mcpConfig: { functionName: 'googleSearch' },
-    promptTemplate: `对该URL进行威胁扫描分析（通过URLScan.io公开数据）。
-检测内容：
-1. 钓鱼网站指标（伪装品牌、疑似登录表单）
-2. 恶意JavaScript代码或加密矿工脚本
-3. 重定向链和最终目标页面
-4. 页面中加载的第三方资源和追踪器
-5. SSL证书信息和域名注册时间
-6. 威胁分类（钓鱼/恶意软件/诈骗/安全）
+    description: '【真实】查询 URLScan.io 扫描记录，分析钓鱼、恶意脚本和重定向链。需要 URLScan API Key。',
+    targetTypes: [NodeType.URL, NodeType.DOMAIN, NodeType.PHISHING_KIT],
+    apiConfig: {
+        endpoint: 'https://urlscan.io/api/v1/search/',
+        method: 'GET',
+        headers: {},
+        queryParams: { q: 'page.url:"{target}"', size: '10' },
+        paramMapping: { target: '链接' },
+        apiKeyField: 'headers.API-Key',
+        mockResponse: {
+            "results": [
+                {
+                    "task": { "url": "https://example.com", "time": "2025-01-01T00:00:00.000Z" },
+                    "page": { "domain": "example.com", "ip": "93.184.216.34", "country": "US" },
+                    "verdicts": { "overall": { "score": 0, "categories": [], "brands": [], "tags": [] } }
+                }
+            ]
+        }
+    },
+    promptTemplate: `基于 URLScan.io 扫描结果分析该 URL 的安全状况。
+1. 扫描时间和地理位置。
+2. 威胁评分和分类（钓鱼/恶意软件/可疑/安全）。
+3. 识别的品牌伪装（如有）。
+4. 页面加载的第三方资源和追踪器。
+5. 技术栈和服务器信息。
 
 创建实体：
-- 如发现钓鱼，创建PHISHING_KIT节点并关联伪装的品牌
-- 恶意脚本创建CODE_SNIPPET节点
-- 最终重定向目标创建新URL节点
-- SSL证书创建SSL_CERT节点`,
+- 如发现钓鱼，创建PHISHING_KIT节点
+- 识别的品牌创建ORGANIZATION节点
+- 第三方域名创建DOMAIN节点
+- 加载的恶意脚本创建CODE_SNIPPET节点`,
     autoExpand: true,
     isSimulated: false
   },
@@ -757,31 +808,40 @@ export const DEFAULT_TOOLS: Tool[] = [
 
   // --- Blockchain Analysis ---
   {
-    id: 'mcp_blockchain_explorer',
-    category: ToolCategory.MCP,
-    name: '多链追踪 (Blockchain)',
-    version: 'Live',
-    author: 'Multi-Chain',
-    description: '【真实】追踪BTC/ETH/USDT等加密货币地址的交易和余额',
+    id: 'api_blockchain',
+    category: ToolCategory.API,
+    name: 'ETH 交易追踪 (Etherscan)',
+    version: 'v2',
+    author: 'Etherscan',
+    description: '【真实】查询以太坊地址的最近交易记录和对手方。需要 Etherscan API Key。',
     targetTypes: [NodeType.CRYPTO_WALLET, NodeType.TRANSACTION],
-    mcpConfig: { functionName: 'googleSearch' },
-    promptTemplate: `分析该加密货币地址的链上活动（通过Blockchain.com, Etherscan等公开数据）。
-查询内容：
-1. 当前余额和历史余额变化
-2. 交易历史（发送/接收的金额、时间、对手方地址）
-3. 地址标签和已知归属（交易所、混币器、DeFi协议）
-4. 首次/最近活跃时间
-5. 关联地址和资金流向
-6. 参与的智能合约交互
+    apiConfig: {
+        endpoint: 'https://api.etherscan.io/api',
+        method: 'GET',
+        queryParams: { module: 'account', action: 'txlist', address: '{target}', startblock: '0', endblock: '99999999', page: '1', offset: '10', sort: 'desc' },
+        paramMapping: { target: '钱包地址' },
+        apiKeyField: 'queryParams.apikey',
+        mockResponse: {
+            "status": "1",
+            "message": "OK",
+            "result": [
+                { "hash": "0x...", "from": "0x...", "to": "0x...", "value": "1000000000000000000", "timeStamp": "1609459200", "gasPrice": "20000000000" }
+            ]
+        }
+    },
+    promptTemplate: `基于 Etherscan 交易数据分析该钱包的链上活动。
+1. 最近 10 笔交易的发送/接收方向和金额。
+2. 主要对手方地址识别。
+3. 交易频率和时间模式。
+4. Gas 使用模式（判断是否为智能合约交互）。
 
 提取实体：
 - 对手方地址创建新的CRYPTO_WALLET节点
-- 交易记录创建TRANSACTION节点
-- 交易所/服务创建ORGANIZATION节点
-- 智能合约创建TOOL_SOFTWARE节点
+- 大额交易创建TRANSACTION节点
+- 如对手方是已知交易所/服务，创建ORGANIZATION节点
 - 如发现异常模式，创建INDICATOR节点
 
-注意识别地址类型：个人钱包/交易所地址/智能合约/混币器`,
+注意：此工具仅查询 ETH 主网交易历史。`,
     autoExpand: true,
     isSimulated: false
   },
@@ -790,7 +850,7 @@ export const DEFAULT_TOOLS: Tool[] = [
   {
     id: 'mcp_twitter_intel',
     category: ToolCategory.MCP,
-    name: 'X/Twitter 深度情报 (Live)',
+    name: 'X/Twitter 深度情报 (Search)',
     version: 'Live',
     author: 'Twitter OSINT',
     description: '【真实】分析Twitter/X账号的推文历史、关注关系、互动网络',
@@ -881,131 +941,56 @@ export const DEFAULT_TOOLS: Tool[] = [
 
   // --- Enhanced Threat Intelligence ---
   {
-    id: 'mcp_otx_threat',
-    category: ToolCategory.MCP,
-    name: '威胁脉冲 (AlienVault OTX)',
-    version: 'Live',
+    id: 'api_otx_threat',
+    category: ToolCategory.API,
+    name: '威胁情报 (AlienVault OTX)',
+    version: 'v1',
     author: 'AlienVault',
-    description: '【真实】查询AlienVault开放威胁交换平台的IOC和攻击活动',
-    targetTypes: [NodeType.IP_ADDRESS, NodeType.DOMAIN, NodeType.FILE_HASH, NodeType.URL, NodeType.MALWARE],
-    mcpConfig: { functionName: 'googleSearch' },
-    promptTemplate: `查询该IOC在AlienVault OTX威胁情报平台的关联信息。
-
-搜索重点：
-1. **威胁脉冲 (Pulses)**
-   - 该IOC出现在哪些威胁脉冲中
-   - 脉冲的标题、描述和标签
-   - 脉冲的创建者和发布时间
-   - 置信度和严重性评级
-
-2. **攻击活动关联**
-   - 关联的APT组织或威胁行为者
-   - 攻击战役名称和时间线
-   - 攻击目标行业和地理区域
-   - 使用的TTPs (战术、技术、过程)
-
-3. **相关IOCs**
-   - 同一脉冲中的其他指标
-   - IP地址、域名、哈希值的关联
-   - C2服务器和恶意软件样本
-   - 钓鱼域名和URL
-
-4. **历史活动**
-   - 首次/最近观测时间
-   - 活跃时间段和频率
-   - 行为模式变化
-
-5. **MITRE ATT&CK映射**
-   - 对应的ATT&CK技术ID
-   - 战术阶段（初始访问、执行、持久化等）
-
-创建实体：
-- 威胁行为者创建THREAT_ACTOR节点
-- 攻击战役创建CAMPAIGN节点
-- 相关IOC创建对应类型节点（IP/域名/哈希）
-- ATT&CK技术创建ATTACK_PATTERN节点
-- 恶意软件创建MALWARE节点
-- 脉冲本身创建REPORT节点
-
-输出结构：
-按时间顺序列出相关脉冲，标注高危威胁和需要重点关注的关联。`,
+    description: '【真实】查询 AlienVault OTX 威胁情报平台的 IOC、Pulses 和攻击活动。',
+    targetTypes: [NodeType.IP_ADDRESS, NodeType.DOMAIN, NodeType.FILE_HASH],
+    apiConfig: {
+        endpoint: 'https://otx.alienvault.com/api/v1/search/pulses',
+        method: 'GET',
+        queryParams: { q: '{target}', limit: '20' },
+        headers: {},
+        paramMapping: { target: 'IP地址' },
+        apiKeyField: 'headers.X-OTX-API-KEY',
+        mockResponse: {
+            "results": [
+                { "id": "pulse1", "name": "TrickBot C2 Infrastructure", "description": "...", "tags": ["trickbot", "banking-trojan"], "modified": "2025-01-01", "indicators": [{ "indicator": "192.0.2.1", "type": "IPv4" }] }
+            ],
+            "count": 1
+        }
+    },
+    promptTemplate: "基于 AlienVault OTX 威胁情报数据，分析该 IOC 的安全状况。\n1. 列出相关的 Threat Pulses（名称、标签、时间）。\n2. 识别关联的威胁行为者（APT/团伙）。\n3. 提取同一 Pulse 中的其他 IOC（C2、域名、哈希）。\n4. 标注 MITRE ATT&CK 技术（如有）。\n5. 评估风险等级和首次观测时间。",
     autoExpand: true,
     isSimulated: false
   },
 
   // --- Corporate Intelligence ---
   {
-    id: 'mcp_company_graph',
-    category: ToolCategory.MCP,
-    name: '企业关系网 (Corporate Tree)',
-    version: 'Live',
+    id: 'api_company_graph',
+    category: ToolCategory.API,
+    name: '企业关系网 (OpenCorporates)',
+    version: 'v0.4',
     author: 'OpenCorporates',
-    description: '【真实】分析企业股权结构、高管关系、子公司和关联企业',
+    description: '【真实】通过 OpenCorporates API 查询企业工商信息、股权结构和关联企业。',
     targetTypes: [NodeType.ORGANIZATION, NodeType.COMPANY_REGISTRATION],
-    mcpConfig: { functionName: 'googleSearch' },
-    promptTemplate: `深度挖掘该企业的股权结构和关系网络（通过企查查、天眼查、OpenCorporates等公开数据）。
-
-调查维度：
-
-1. **基本工商信息**
-   - 统一社会信用代码/注册号
-   - 法定代表人和实际控制人
-   - 注册资本和实缴资本
-   - 成立日期和营业期限
-   - 注册地址和经营范围
-
-2. **股权结构穿透**
-   - 股东列表和持股比例
-   - 股权穿透至自然人和最终受益人
-   - 股权质押和冻结情况
-   - 历史股权变更记录
-
-3. **对外投资**
-   - 控股子公司列表
-   - 参股公司和投资比例
-   - 投资行业分布
-   - 投资时间线
-
-4. **高管团队**
-   - 董事、监事、高管名单
-   - 高管在其他公司的任职
-   - 高管变更历史
-   - 关键人物背景
-
-5. **企业关联**
-   - 同一实控人的其他企业
-   - 关联交易对手
-   - 供应商和客户关系
-   - 竞争对手识别
-
-6. **风险预警**
-   - 法律诉讼和仲裁
-   - 行政处罚
-   - 经营异常
-   - 税务违规
-   - 失信被执行
-
-7. **资质与荣誉**
-   - 行业资质和许可证
-   - 知识产权（专利、商标）
-   - 认证证书
-   - 获奖记录
-
-创建实体：
-- 股东创建ENTITY或ORGANIZATION节点
-- 高管创建ENTITY节点
-- 子公司创建ORGANIZATION节点
-- 实控人创建ENTITY节点
-- 关联企业创建ORGANIZATION节点
-- 法律诉讼创建LEGAL_CASE节点
-- 专利商标创建PATENT节点
-
-关系标注：
-- 使用"持股X%"、"法定代表人"、"实际控制"等标签
-- 标注关系建立时间和当前状态
-
-输出格式：
-生成企业关系图谱，突出核心控制链和风险点。`,
+    apiConfig: {
+        endpoint: 'https://api.opencorporates.com/v0.4/companies/search',
+        method: 'GET',
+        queryParams: { q: '{target}', sparse: 'true' },
+        paramMapping: { target: 'title' },
+        apiKeyField: 'queryParams.api_token',
+        mockResponse: {
+            "results": {
+                "companies": [
+                    { "name": "Example Corp", "company_number": "12345678", "jurisdiction_code": "us_de", "incorporation_date": "2010-01-01", "dissolution_date": null, "registered_address_in_full": "Delaware, USA", "officers": [{ "name": "John Doe", "position": "Director" }] }
+                ]
+            }
+        }
+    },
+    promptTemplate: "基于 OpenCorporates 企业数据库，分析该公司的工商信息和关联网络。\n1. 基本工商信息 — 注册号、法人、成立日期、注册地址。\n2. 高管团队 — 董事、高管名单及职位。\n3. 关联企业 — 同一法人或地址的其他公司。\n4. 风险信号 — 注销状态、地址异常。\n5. 为每个关联企业创建 ORGANIZATION 节点，高管创建 ENTITY 节点。",
     autoExpand: true,
     isSimulated: false
   },
@@ -1014,70 +999,23 @@ export const DEFAULT_TOOLS: Tool[] = [
   {
     id: 'mcp_discord_recon',
     category: ToolCategory.MCP,
-    name: 'Discord 社区情报 (Live)',
+    name: 'Discord 社区情报 (Search)',
     version: 'Live',
     author: 'Discord OSINT',
     description: '【真实】搜索Discord公开服务器和讨论内容',
     targetTypes: [NodeType.ORGANIZATION, NodeType.THREAT_ACTOR, NodeType.SOCIAL_PROFILE, NodeType.APP],
     mcpConfig: { functionName: 'googleSearch' },
-    promptTemplate: `对该目标在Discord平台的社区活动进行情报收集。
+    promptTemplate: `对该目标在Discord平台的公开社区活动进行情报收集。
 
 调查内容：
+1. **服务器发现** — 相关服务器名称、描述、邀请链接、成员规模
+2. **社区分析** — 主要讨论话题、活跃频道、公告内容、管理方式
+3. **成员构成** — 关键管理员、活跃用户、意见领袖
+4. **内容监控** — 敏感讨论、技术交流、交易信息、计划中的活动
+5. **关联分析** — 相关服务器、跨平台账号、外部链接
+6. **威胁评估** — 可疑活动、违规内容、协同攻击计划、社会工程企图
 
-1. **服务器发现**
-   - 与目标相关的Discord服务器
-   - 服务器名称、描述和邀请链接
-   - 服务器成员数估算（如有公开数据）
-   - 创建时间和验证级别
-
-2. **社区分析**
-   - 服务器的主要讨论话题
-   - 活跃频道和热门内容
-   - 公告和置顶消息
-   - 社区规则和管理方式
-
-3. **成员构成**
-   - 关键管理员和版主
-   - 活跃用户和意见领袖
-   - 机器人使用情况
-   - 用户角色和权限结构
-
-4. **内容监控**
-   - 敏感讨论和情报线索
-   - 技术交流（工具、方法）
-   - 交易信息（如涉及）
-   - 计划中的活动或事件
-
-5. **关联分析**
-   - 其他相关Discord服务器
-   - 跨平台账号关联（Twitter, GitHub等）
-   - 外部链接和资源
-   - 合作伙伴和友链
-
-6. **威胁评估**（如适用）
-   - 可疑活动指标
-   - 违规内容类型
-   - 潜在的协同攻击计划
-   - 社会工程或钓鱼企图
-
-7. **时间戳分析**
-   - 社区活跃时间段
-   - 重大事件时间线
-   - 成员增长趋势
-
-创建实体：
-- 服务器创建APP节点（Discord Server）
-- 管理员创建ENTITY或SOCIAL_PROFILE节点
-- 关联组织创建ORGANIZATION节点
-- 如发现威胁创建THREAT_ACTOR节点
-- 重要讨论创建NOTE或REPORT节点
-- 外部链接创建URL节点
-
-输出重点：
-识别社区的真实目的、风险等级和关键人物。
-
-注意：
-仅收集公开可访问的信息，遵守Discord服务条款。`,
+注意：仅收集公开可访问的信息。`,
     autoExpand: true,
     isSimulated: false
   },
@@ -1086,7 +1024,7 @@ export const DEFAULT_TOOLS: Tool[] = [
   {
     id: 'mcp_vessel_tracker',
     category: ToolCategory.MCP,
-    name: '船舶追踪 (AIS)',
+    name: '船舶追踪 (Search)',
     version: 'Live',
     author: 'MarineTraffic',
     description: '【真实】追踪商船实时位置、航线历史和港口停靠',
@@ -1094,78 +1032,17 @@ export const DEFAULT_TOOLS: Tool[] = [
     mcpConfig: { functionName: 'googleSearch' },
     promptTemplate: `追踪该船舶的AIS信号和航运情报（通过VesselFinder, MarineTraffic公开数据）。
 
-查询内容：
+核心查询：
+1. **船舶身份** — 船名、IMO、MMSI、呼号、船旗国
+2. **船舶规格** — 类型、船龄、吨位、尺寸
+3. **所有权** — 船东、运营商、管理公司、租赁状态
+4. **实时位置** — 经纬度、航速、航向、目的港、ETA、航行状态
+5. **航线历史** — 近30天航迹、停靠港口、在港时间
+6. **港口活动** — 当前港口、靠泊位置、装卸货物
+7. **安全合规** — 船级社认证、PSC检查记录、事故历史
+8. **制裁检查** — 是否在制裁名单、疑似违规、转运行为
 
-1. **船舶身份**
-   - 船名 (Vessel Name)
-   - IMO编号（国际海事组织识别号）
-   - MMSI号码（海上移动通信识别码）
-   - 呼号 (Call Sign)
-   - 船旗国 (Flag)
-
-2. **船舶规格**
-   - 船舶类型（货船、油轮、集装箱船、客船等）
-   - 船龄和建造年份
-   - 总吨位 (Gross Tonnage)
-   - 载重吨位 (Deadweight)
-   - 船长、船宽、吃水
-   - 发动机功率
-
-3. **所有权信息**
-   - 船东公司
-   - 运营商
-   - 管理公司
-   - 租赁状态
-
-4. **实时位置**
-   - 当前经纬度坐标
-   - 航速和航向
-   - 目的港
-   - 预计到达时间 (ETA)
-   - 航行状态（航行中、停泊、锚泊）
-
-5. **航线历史**
-   - 过去30天的航迹
-   - 停靠过的港口列表
-   - 在港停留时间
-   - 航线模式分析
-
-6. **港口活动**
-   - 当前停靠港口
-   - 靠泊位置和码头
-   - 装卸货物类型（如有公开信息）
-   - 进出港时间
-
-7. **安全与合规**
-   - 船级社和认证
-   - 检查记录（PSC - 港口国监督）
-   - 缺陷和滞留记录
-   - 事故历史
-
-8. **制裁检查**
-   - 是否在制裁名单
-   - 疑似违规活动
-   - 转运或"暗舱"行为
-
-创建实体：
-- 船舶创建VEHICLE节点
-- 船东/运营商创建ORGANIZATION节点
-- 停靠港口创建GEO_LOCATION节点
-- 当前位置创建GEO_LOCATION节点
-- 航线历史创建EVENT节点
-- 如发现异常创建INDICATOR节点
-
-关系标注：
-- "拥有"、"运营"、"停靠"、"航向"等关系
-
-输出格式：
-生成航运时间线和地理路径图。
-
-应用场景：
-- 货物追踪
-- 供应链分析
-- 制裁监控
-- 地缘政治情报`,
+重点输出：航运时间线、地理路径、异常迹象。`,
     autoExpand: true,
     isSimulated: false
   },
@@ -1174,7 +1051,7 @@ export const DEFAULT_TOOLS: Tool[] = [
   {
     id: 'mcp_nft_tracker',
     category: ToolCategory.MCP,
-    name: 'NFT持有分析 (OpenSea)',
+    name: 'NFT持有分析 (Search)',
     version: 'Live',
     author: 'NFT Analytics',
     description: '【真实】查询钱包持有的NFT资产和交易记录',
@@ -1515,6 +1392,82 @@ export const DEFAULT_TOOLS: Tool[] = [
 - 情绪基调
 - 风险等级`,
     autoExpand: false,
+    isSimulated: false
+  },
+
+  // ============================================
+  // SECTION: MULTI-SOURCE SEARCH (SerpAPI)
+  // ============================================
+  {
+    id: 'api_search_google',
+    category: ToolCategory.API,
+    name: '全网搜索 (Google)',
+    version: 'v1',
+    author: 'SerpAPI',
+    description: '【真实】通过 SerpAPI 调用 Google 搜索引擎。需要 SerpAPI Key。',
+    targetTypes: [],
+    apiConfig: {
+        endpoint: 'https://serpapi.com/search.json',
+        method: 'GET',
+        queryParams: { engine: 'google', q: '{target}', num: '10', hl: 'zh-CN' },
+        paramMapping: { target: 'title' },
+        apiKeyField: 'queryParams.api_key',
+        mockResponse: {
+            "organic_results": [
+                { "title": "Example Result", "link": "https://example.com", "snippet": "..." }
+            ]
+        }
+    },
+    promptTemplate: "基于 Google 搜索结果，分析关于该目标的公开情报。\n1. 提取关键信息点和来源。\n2. 识别人名、组织、地点等实体。\n3. 判断信息的时效性和可信度。\n4. 为发现的实体创建对应节点。",
+    autoExpand: true,
+    isSimulated: false
+  },
+  {
+    id: 'api_search_baidu',
+    category: ToolCategory.API,
+    name: '全网搜索 (百度)',
+    version: 'v1',
+    author: 'SerpAPI',
+    description: '【真实】通过 SerpAPI 调用百度搜索引擎。适合国内情报。需要 SerpAPI Key。',
+    targetTypes: [],
+    apiConfig: {
+        endpoint: 'https://serpapi.com/search.json',
+        method: 'GET',
+        queryParams: { engine: 'baidu', q: '{target}', num: '10' },
+        paramMapping: { target: 'title' },
+        apiKeyField: 'queryParams.api_key',
+        mockResponse: {
+            "organic_results": [
+                { "title": "百度结果示例", "link": "https://example.cn", "snippet": "..." }
+            ]
+        }
+    },
+    promptTemplate: "基于百度搜索结果，分析关于该目标的国内公开情报。\n1. 提取关键信息点和来源。\n2. 识别中文人名、国内企业、地点等实体。\n3. 判断信息的时效性和可信度。\n4. 为发现的实体创建对应节点。",
+    autoExpand: true,
+    isSimulated: false
+  },
+  {
+    id: 'api_search_bing',
+    category: ToolCategory.API,
+    name: '全网搜索 (Bing)',
+    version: 'v1',
+    author: 'SerpAPI',
+    description: '【真实】通过 SerpAPI 调用 Bing 搜索引擎。适合技术/OSINT情报。需要 SerpAPI Key。',
+    targetTypes: [],
+    apiConfig: {
+        endpoint: 'https://serpapi.com/search.json',
+        method: 'GET',
+        queryParams: { engine: 'bing', q: '{target}', num: '10' },
+        paramMapping: { target: 'title' },
+        apiKeyField: 'queryParams.api_key',
+        mockResponse: {
+            "organic_results": [
+                { "title": "Bing Result", "link": "https://example.com", "snippet": "..." }
+            ]
+        }
+    },
+    promptTemplate: "基于 Bing 搜索结果，分析关于该目标的公开情报。\n1. 提取关键信息点和来源。\n2. 识别人名、组织、地点等实体。\n3. 判断信息的时效性和可信度。\n4. 为发现的实体创建对应节点。",
+    autoExpand: true,
     isSimulated: false
   }
 ];

@@ -3,6 +3,7 @@ import React, { useRef, useState } from 'react';
 import { IntelNode, Connection, Position, NodeType } from '../types';
 import { NodeCard } from './NodeCard';
 import { GraphAnalysisResult } from '../services/graphAnalysis';
+import { NODE_WIDTH } from '../constants';
 
 interface CanvasProps {
   nodes: IntelNode[];
@@ -59,13 +60,15 @@ export const Canvas: React.FC<CanvasProps> = ({
   const handlePointerDown = (e: React.PointerEvent) => {
     // 1. Handle Panning
     // Middle Click, Right Click, Alt+Left, OR Left Click on Background
+    const targetEl = e.target as Element;
+    const isNode = !!targetEl.closest('[data-node-id]');
     if (
         e.button === 1 || 
         e.button === 2 || 
         (e.button === 0 && e.altKey) || 
-        (e.button === 0 && e.target === containerRef.current)
+        (e.button === 0 && !isNode)
     ) {
-      if (e.button === 0 && !e.altKey) {
+      if (e.button === 0 && !e.altKey && !isNode) {
           // If left clicking background, clear selection
           onSelectionChange([]);
       }
@@ -215,8 +218,8 @@ export const Canvas: React.FC<CanvasProps> = ({
          !target.type.includes(searchTerm.toUpperCase())
       );
       
-      // Source: Right side of the card (width 280)
-      const sx = source.position.x + 280; 
+      // Source: Right side of the card
+      const sx = source.position.x + NODE_WIDTH; 
       const sy = source.position.y + 40; // Approx vertical center of header
 
       // Target: Left side of the card
@@ -293,7 +296,7 @@ export const Canvas: React.FC<CanvasProps> = ({
              const source = nodes.find(n => n.id === connectionSourceId);
              if(!source) return null;
              
-             const sx = source.position.x + 280; 
+             const sx = source.position.x + NODE_WIDTH; 
              const sy = source.position.y + 40;
              const tx = mousePos.x;
              const ty = mousePos.y;

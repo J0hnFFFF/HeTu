@@ -5,14 +5,15 @@ import { ControlPanel } from './components/ControlPanel';
 import { ContextMenu } from './components/ContextMenu';
 import { TrajectoryModal, extractTrajectoryPoints } from './components/TrajectoryModal';
 import { NodeDetailPanel } from './components/NodeDetailPanel';
-import { IntelNode, Connection, NodeType, Position, LogEntry, Tool, AIModelConfig, Project, CanvasData, Snapshot } from './types';
+import { IntelNode, Connection, NodeType, Position, LogEntry, Tool, AIModelConfig, Project, CanvasData, Snapshot, FollowUpRule, ExternalApiKeys } from './types';
 import { executeTool, generateFinalReport, BriefingContext } from './services/geminiService';
 import { analyzeGraph, GraphAnalysisResult } from './services/graphAnalysis';
 import { analyzeInvestigation, InvestigationAnalysis } from './services/investigationEngine';
 import { analyzeDataQuality, DataQualityReport } from './services/dataQualityEngine';
 import { AnalysisPanel } from './components/AnalysisPanel';
-import { ENTITY_DEFAULT_FIELDS } from './constants';
+import { ENTITY_DEFAULT_FIELDS, DEFAULT_FOLLOW_UP_RULES, MAX_FOLLOW_UP_DEPTH, resolveFollowUpRules } from './constants';
 import { DEFAULT_TOOLS } from './tools';
+import { nanoid } from 'nanoid';
 import { Search, Layout, Save, FolderOpen, Network, Trash2, FileText, X, FileOutput, RefreshCw, Folder, ChevronDown, Plus, Camera, Layers, Edit3, GitBranch } from 'lucide-react';
 import {
   saveAIConfig,
@@ -42,9 +43,12 @@ import {
   loadSnapshotData,
   deleteSnapshot,
   cleanupSnapshots,
+  // 联动规则
+  saveFollowUpRules,
+  loadFollowUpRules,
 } from './services/storageService';
 
-const uuid = () => Math.random().toString(36).substr(2, 9);
+const justLoadedRef = useRef(false);
 
 const App: React.FC = () => {
   const [nodes, setNodes] = useState<IntelNode[]>([]);
@@ -64,11 +68,17 @@ const App: React.FC = () => {
 
   // AI Configuration State
   const [aiConfig, setAiConfig] = useState<AIModelConfig>({
-      modelId: 'gemini-2.5-flash',
+      modelId: 'gemini-3-flash',
       temperature: 0.4,
       enableThinking: false,
       thinkingBudget: 0
   });
+
+  // External API Keys State
+  const [apiKeys, setApiKeys] = useState<ExternalApiKeys>({});
+
+  // Follow-up Rules State (默认 + 用户自定义)
+  const [followUpRules, setFollowUpRules] = useState<FollowUpRule[]>(DEFAULT_FOLLOW_UP_RULES);
 
   // Context Menu State
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null);
@@ -115,7 +125,7 @@ const App: React.FC = () => {
 
   // Logging
   const addLog = useCallback((action: string, status: LogEntry['status'] = 'info') => {
-    const newLog = { id: uuid(), timestamp: new Date(), action, status };
+    const newLog = { id: nanoid(), timestamp: new Date(), action, status };
     console.log('[LOG]', newLog); // Debug: 确认日志被调用
     setLogs(prev => [newLog, ...prev].slice(0, 200));
   }, []);
@@ -150,6 +160,7 @@ const App: React.FC = () => {
         setCurrentCanvasId(canvId);
 
         // 加载当前画布的数据
+        justLoadedRef.current = true;
         const { nodes: savedNodes, connections: savedConnections } = await loadCanvasData(canvId);
         setNodes(savedNodes);
         setConnections(savedConnections);
@@ -157,6 +168,17 @@ const App: React.FC = () => {
         // 加载当前画布的快照
         const snapshotList = await loadSnapshots(canvId);
         setSnapshots(snapshotList);
+
+        // 加载联动规则（用户自定义覆盖默认）
+        const savedRules = await loadFollowUpRules();
+        if (savedRules.length > 0) {
+          // 合并：默认规则为基础，用户规则覆盖/补充
+          const ruleMap = new Map(DEFAULT_FOLLOW_UP_RULES.map(r => [r.id, r]));
+          for (const userRule of savedRules) {
+            ruleMap.set(userRule.id, userRule);
+          }
+          setFollowUpRules(Array.from(ruleMap.values()));
+        }
 
         if (savedNodes.length > 0) {
           addLog(`已恢复画布数据: ${savedNodes.length} 个节点, ${savedConnections.length} 个连接`, 'success');
@@ -185,6 +207,10 @@ const App: React.FC = () => {
   // --- Persistence: 图谱变更标记 ---
   useEffect(() => {
     if (!isInitialized) return;
+    if (justLoadedRef.current) {
+      justLoadedRef.current = false;
+      return;
+    }
     if (nodes.length > 0 || connections.length > 0) {
       setHasUnsavedChanges(true);
     }
@@ -224,6 +250,7 @@ const App: React.FC = () => {
   const handleLoadGraph = useCallback(async () => {
     if (!currentCanvasId) return;
     try {
+      justLoadedRef.current = true;
       const { nodes: savedNodes, connections: savedConnections } = await loadCanvasData(currentCanvasId);
       setNodes(savedNodes);
       setConnections(savedConnections);
@@ -246,6 +273,7 @@ const App: React.FC = () => {
       }
 
       // 加载目标画布
+      justLoadedRef.current = true;
       const { nodes: newNodes, connections: newConns } = await loadCanvasData(canvasId);
       setNodes(newNodes);
       setConnections(newConns);
@@ -287,6 +315,7 @@ const App: React.FC = () => {
       // 切换到新项目的第一个画布
       if (canvasList.length > 0) {
         const firstCanvas = canvasList[0];
+        justLoadedRef.current = true;
         const { nodes: newNodes, connections: newConns } = await loadCanvasData(firstCanvas.id);
         setNodes(newNodes);
         setConnections(newConns);
@@ -375,7 +404,8 @@ const App: React.FC = () => {
       // 自动清理旧快照
       const cleaned = await cleanupSnapshots(currentCanvasId, 20);
       if (cleaned > 0) {
-        setSnapshots(prev => prev.slice(0, 20));
+        const snapshotList = await loadSnapshots(currentCanvasId);
+        setSnapshots(snapshotList);
       }
 
       addLog(`已创建快照: ${name} (${nodes.length} 节点)`, 'success');
@@ -389,6 +419,7 @@ const App: React.FC = () => {
     try {
       const data = await loadSnapshotData(snapshotId);
       if (data) {
+        justLoadedRef.current = true;
         setNodes(data.nodes);
         setConnections(data.connections);
         setHasUnsavedChanges(true);
@@ -573,7 +604,7 @@ const App: React.FC = () => {
         keyNodes: keyNodeTitles.length > 0 ? keyNodeTitles : undefined
       };
 
-      const report = await generateFinalReport(briefingContext);
+      const report = await generateFinalReport(briefingContext, aiConfig.modelId);
       setReportText(report);
       addLog('✅ 情报简报生成成功', 'success');
     } catch (e) {
@@ -645,7 +676,7 @@ const App: React.FC = () => {
     const defaultData = ENTITY_DEFAULT_FIELDS[type] ? { ...ENTITY_DEFAULT_FIELDS[type] } : {};
 
     const newNode: IntelNode = {
-      id: uuid(),
+      id: nanoid(),
       type,
       title: `新 ${type}`,
       content: content,
@@ -671,7 +702,7 @@ const App: React.FC = () => {
   const handleConnect = useCallback((sourceId: string, targetId: string) => {
     const sourceNode = nodesRef.current.find(n => n.id === sourceId);
     const targetNode = nodesRef.current.find(n => n.id === targetId);
-    setConnections(prev => [...prev, { id: uuid(), sourceId, targetId }]);
+    setConnections(prev => [...prev, { id: nanoid(), sourceId, targetId }]);
     if (sourceNode && targetNode) {
       addLog(`创建连接: [${sourceNode.title}] → [${targetNode.title}]`, 'info');
     } else {
@@ -703,6 +734,19 @@ const App: React.FC = () => {
       if (config.temperature !== aiConfig.temperature) addLog(`AI 温度调整: ${config.temperature}`, 'info');
   }, [aiConfig, addLog]);
 
+  const handleUpdateApiKeys = useCallback((keys: ExternalApiKeys) => {
+      setApiKeys(keys);
+      if ((window as any).electronAPI?.setExternalApiKeys) {
+        (window as any).electronAPI.setExternalApiKeys(keys).catch((e: any) => {
+          console.error('Failed to save external API keys:', e);
+        });
+      }
+      const activeKeys = Object.entries(keys).filter(([, v]) => v).map(([k]) => k);
+      if (activeKeys.length > 0) {
+        addLog(`已配置外部 API Keys: ${activeKeys.join(', ')}`, 'success');
+      }
+  }, [addLog]);
+
   // --- Data Import Logic ---
   const handleImportData = async (fileContent: string, type: 'json' | 'text') => {
     try {
@@ -711,8 +755,8 @@ const App: React.FC = () => {
          if (Array.isArray(importedData.nodes)) {
             const enhancedNodes = importedData.nodes.map((n: any) => ({
                 ...n,
-                id: uuid(),
-                data: { ...ENTITY_DEFAULT_FIELDS[n.type as NodeType], ...n.data } 
+                id: nanoid(),
+                data: { ...(ENTITY_DEFAULT_FIELDS[n.type as NodeType] || {}), ...(n.data || {}) } 
             }));
             setNodes(prev => [...prev, ...enhancedNodes]);
             addLog(`成功导入 ${enhancedNodes.length} 个节点`, 'success');
@@ -730,13 +774,36 @@ const App: React.FC = () => {
 
   // --- Analysis Engine ---
 
-  const runToolOnNode = async (tool: Tool, node: IntelNode): Promise<IntelNode[]> => {
+  // 联动链上下文（防循环 + 深度限制）
+  interface ChainContext {
+    depth: number;
+    executedPairs: Set<string>; // "toolId:nodeId"
+  }
+
+  const runToolOnNode = async (tool: Tool, node: IntelNode, chainCtx?: ChainContext): Promise<IntelNode[]> => {
+     const ctx = chainCtx || { depth: 0, executedPairs: new Set() };
+     
+     // --- 防循环检测 ---
+     const pairKey = `${tool.id}:${node.id}`;
+     if (ctx.executedPairs.has(pairKey)) {
+       addLog(`⛔ 联动跳过: [${tool.name}] @ ${node.title} 已在当前链中执行过（防循环）`, 'warning');
+       return [];
+     }
+     
+     // --- 深度限制 ---
+     if (ctx.depth > MAX_FOLLOW_UP_DEPTH) {
+       addLog(`⛔ 联动终止: [${tool.name}] 已达到最大深度 ${MAX_FOLLOW_UP_DEPTH}`, 'warning');
+       return [];
+     }
+     
+     ctx.executedPairs.add(pairKey);
+     
      setNodeStatus([node.id], 'PROCESSING');
-     addLog(`🔄 执行工具 [${tool.name}] → 目标: ${node.title} (${node.type})`, 'info');
+     addLog(`🔄 执行工具 [${tool.name}] → 目标: ${node.title} (${node.type})${ctx.depth > 0 ? ` [联动深度: ${ctx.depth}]` : ''}`, 'info');
 
      try {
-        // Pass aiConfig to the service execution
-        const result = await executeTool(tool, node, nodesRef.current, aiConfig);
+        // Pass aiConfig and apiKeys to the service execution
+        const result = await executeTool(tool, node, nodesRef.current, aiConfig, apiKeys);
 
         // Log property updates
         if (result.updateData) {
@@ -781,6 +848,30 @@ const App: React.FC = () => {
      }
   };
 
+  /** 处理工具联动：合并 Tool.followUp（向后兼容）+ 全局 followUpRules */
+  const processFollowUps = async (sourceTool: Tool, newNodes: IntelNode[], ctx: ChainContext) => {
+    if (newNodes.length === 0) return;
+    
+    const activeRules = resolveFollowUpRules(sourceTool, followUpRules);
+    if (activeRules.length === 0) return;
+    
+    for (const rule of activeRules) {
+      const matchedNodes = newNodes.filter(n => n.type === rule.whenNodeType);
+      if (matchedNodes.length > 0) {
+        const followUpTool = tools.find(t => t.id === rule.targetToolId);
+        if (followUpTool) {
+          addLog(`🔗 联动触发: [${sourceTool.name}] → 自动执行 [${followUpTool.name}] (${matchedNodes.length} 个 ${rule.whenNodeType} 节点)`, 'info');
+          for (const matchedNode of matchedNodes) {
+            await runToolOnNode(followUpTool, matchedNode, {
+              depth: ctx.depth + 1,
+              executedPairs: ctx.executedPairs
+            });
+          }
+        }
+      }
+    }
+  };
+
   const handleRunTool = async (tool: Tool, targetNodes: IntelNode[]) => {
     setIsProcessing(true);
     setContextMenu(null);
@@ -790,14 +881,16 @@ const App: React.FC = () => {
     }
 
     for (const node of targetNodes) {
-        await runToolOnNode(tool, node);
+        const newNodes = await runToolOnNode(tool, node);
+        
+        // --- 工具联动 (Follow-up) ---
+        await processFollowUps(tool, newNodes, { depth: 0, executedPairs: new Set() });
     }
 
     if (targetNodes.length > 1) {
       addLog(`✓ 批量执行完成 [${tool.name}]`, 'success');
     }
 
-    // 不再自动重排所有节点，新节点位置已在 runToolOnNode 中计算（相对于源节点往右排列）
     setIsProcessing(false);
   };
 
@@ -1239,6 +1332,8 @@ const App: React.FC = () => {
                     y={contextMenu.y}
                     node={node}
                     availableTools={availableTools}
+                    allTools={tools}
+                    followUpRules={followUpRules}
                     onRunTool={(tool) => handleRunTool(tool, [node])}
                     onDelete={() => deleteNodes([node.id])}
                     onClose={() => setContextMenu(null)}
@@ -1265,6 +1360,18 @@ const App: React.FC = () => {
          isProcessing={isProcessing}
          aiConfig={aiConfig}
          onUpdateAiConfig={handleUpdateAiConfig}
+         apiKeys={apiKeys}
+         onUpdateApiKeys={handleUpdateApiKeys}
+         followUpRules={followUpRules}
+         onUpdateFollowUpRules={async (rules) => {
+           setFollowUpRules(rules);
+           try {
+             await saveFollowUpRules(rules);
+             addLog('✓ 联动规则已保存', 'success');
+           } catch (e) {
+             addLog(`❌ 保存联动规则失败: ${e}`, 'error');
+           }
+         }}
          onLog={addLog}
        />
 

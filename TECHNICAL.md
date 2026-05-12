@@ -70,8 +70,9 @@
           ▼
 ┌────────────────────────────────────────────┐
 │      Google Gemini API                     │
-│  - gemini-2.5-flash (快速)                 │
-│  - gemini-3.0-pro (深度推理)               │
+│  - gemini-3-flash (高速/通用)              │
+│  - gemini-3-pro (深度推理)                 │
+│  - gemini-3-flash-lite (极速/低成本)       │
 │  - Search Grounding (实时 Web 数据)        │
 └────────────────────────────────────────────┘
 ```

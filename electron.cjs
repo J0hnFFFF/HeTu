@@ -25,6 +25,43 @@ ipcMain.handle('delete-api-key', () => {
   return true;
 });
 
+// IPC 处理：获取第三方 API Keys
+ipcMain.handle('get-external-api-keys', () => {
+  return store.get('externalApiKeys', {});
+});
+
+// IPC 处理：保存第三方 API Keys
+ipcMain.handle('set-external-api-keys', (event, keys) => {
+  store.set('externalApiKeys', keys);
+  return true;
+});
+
+// IPC 处理：代理外部 HTTP API 请求（绕过 CORS）
+ipcMain.handle('fetch-external-api', async (event, { url, method, headers, body }) => {
+  try {
+    const options = {
+      method: method || 'GET',
+      headers: headers || {},
+      body: body ? JSON.stringify(body) : undefined
+    };
+    const response = await fetch(url, options);
+    const data = await response.json().catch(() => null);
+    return {
+      ok: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+      data
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 0,
+      statusText: error.message || 'Network Error',
+      data: null
+    };
+  }
+});
+
 async function promptForApiKey(win) {
   // 在生产环境中，如果没有 API Key，显示设置提示
   const hasApiKey = store.get('apiKey');
