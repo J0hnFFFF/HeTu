@@ -116,8 +116,40 @@ executeTool() 构建 Prompt
   ↓
 图谱扩展 (创建新节点、连线)
   ↓
+processFollowUps() 联动链检测
+  ↓
 Canvas 重新渲染
 ```
+
+### 1.6 工具联动链 (v6.2.0)
+
+系统支持**工具联动链**：当一个工具执行后产生特定类型的新节点时，自动执行后续工具。
+
+**联动规则解析** (`constants.ts`):
+```typescript
+resolveFollowUpRules(tool, followUpRules)
+  // 1. 全局规则优先于 Tool.followUp（legacy）
+  // 2. 只要存在全局规则覆盖 legacy，无论是否启用，legacy 都失效
+  // 3. 返回最终生效的规则列表
+```
+
+**执行上下文** (`App.tsx`):
+```typescript
+interface ChainContext {
+  depth: number;              // 当前深度（0=用户触发，1+=联动）
+  executedPairs: Set<string>; // "toolId:nodeId" 防循环
+}
+```
+
+**防循环策略**:
+- 同一 `(toolId, nodeId)` 组合在当前链中只执行一次
+- 最大深度限制: 3 层联动
+- 跨分支共享 `executedPairs`（引用传递）
+
+**规则来源**:
+- `DEFAULT_FOLLOW_UP_RULES` (constants.ts): 8 条内置规则
+- 用户自定义规则: 通过 ControlPanel「联动链」面板添加/删除
+- IndexedDB `followUpRules` 表持久化 (DB_VERSION = 3)
 
 ---
 
@@ -164,6 +196,20 @@ interface Tool {
     functionName: 'googleSearch'; // 启用搜索 Grounding
   };
   autoExpand: boolean;            // 是否自动生成关联节点
+  /** @deprecated 使用全局 FollowUpRule 替代 */
+  followUp?: { whenNodeType: NodeType; runToolId: string }[];
+}
+```
+
+**联动规则** (v6.2.0 新增):
+```typescript
+interface FollowUpRule {
+  id: string;
+  sourceToolId: string;     // 触发工具
+  whenNodeType: NodeType;   // 匹配节点类型
+  targetToolId: string;     // 执行工具
+  isEnabled: boolean;
+  isUserDefined: boolean;
 }
 ```
 
@@ -543,6 +589,26 @@ case NodeType.MY_NEW_ENTITY:
 }
 ```
 
+**联动规则** (v6.2.0):
+不再在 Tool 定义中直接写 `followUp`（已标记 `@deprecated`）。
+推荐在 `constants.ts` 的 `DEFAULT_FOLLOW_UP_RULES` 中添加全局规则：
+
+```typescript
+{
+  id: 'default-my-tool-dns',
+  sourceToolId: 'my_tool',
+  whenNodeType: NodeType.DOMAIN,
+  targetToolId: 'api_dns_resolve',
+  isEnabled: true,
+  isUserDefined: false
+}
+```
+
+全局规则的优势：
+- 用户可在 UI 中启用/禁用，无需修改代码
+- 支持代码更新后自动升级默认规则
+- 不会被工具定义中的 legacy `followUp` 干扰
+
 ### 6.3 Prompt 编写最佳实践
 
 1. **明确角色定位**: "你是网络安全专家 / OSINT 分析师 / 威胁情报研究员"
@@ -574,6 +640,7 @@ nexus-osint-platform/
 │   └── AnalysisPanel.tsx      # 网络分析报告面板
 ├── services/
 │   ├── geminiService.ts       # AI 服务层
+│   ├── apiService.ts          # 外部 API 调用代理 (Electron IPC)
 │   ├── storageService.ts      # 本地持久化服务 (IndexedDB)
 │   ├── graphAnalysis.ts       # 图谱分析服务 (社区发现/核心节点)
 │   ├── investigationEngine.ts # 调查建议引擎 (完整性分析)

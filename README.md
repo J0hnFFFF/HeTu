@@ -1,10 +1,10 @@
 # 河图情报分析系统
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-6.0.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/Version-6.2.0-blue" alt="Version">
   <img src="https://img.shields.io/badge/License-Apache%202.0-green" alt="License">
   <img src="https://img.shields.io/badge/React-19-61DAFB" alt="React">
-  <img src="https://img.shields.io/badge/AI-Gemini%202.5-4285F4" alt="Gemini">
+  <img src="https://img.shields.io/badge/AI-Gemini%203-4285F4" alt="Gemini">
   <img src="https://img.shields.io/badge/Platform-Web%20|%20Windows%20|%20macOS%20|%20Linux-lightgrey" alt="Platform">
 </p>
 
@@ -57,7 +57,7 @@
 
 ### AI 增强分析
 
-- **Google Gemini 2.5 / 3.0** - 集成最新大语言模型
+- **Google Gemini 3.x** - 集成最新大语言模型（Gemini 2.5 已弃用）
 - **实时搜索 (Search Grounding)** - AI 可访问实时网络数据
 - **深度思考模式** - 支持 Extended Thinking 深度推理
 - **自动化实体发现** - AI 自动识别并创建关联实体
@@ -222,8 +222,27 @@ npm run electron:build
 - [x] 社区发现 (Louvain) + 核心节点识别
 - [x] 调查建议引擎 (完整性分析)
 - [x] 多画布工作区 / 快照版本 (6.0)
+- [x] 工具联动链 / 防循环 / 深度限制 / 自定义规则 (6.2.0)
 - [ ] 团队协作功能
 - [ ] 插件市场
+
+### v6.2.0 变更日志
+
+**工具联动链 (Follow-up Chains)**
+- 新增 7 条默认联动规则：子域名发现 → DNS → Shodan/VT、URLScan → DNS、实体提取 → GitHub/LinkedIn 等
+- 支持防循环检测：同一链中 `(toolId, nodeId)` 组合不会重复执行
+- 支持深度限制：最大 3 层联动，自动终止过深链
+- 支持用户自定义联动规则：在 ControlPanel「联动链」面板中启用/禁用默认规则、添加自定义规则
+- 联动规则持久化到 IndexedDB，支持代码更新后默认规则自动升级
+
+**模型迁移**
+- Gemini 2.5 系列已弃用，全面迁移至 Gemini 3.x（3 Flash / 3 Pro / 3 Flash-Lite）
+
+**Bug 修复**
+- 修复深度限制语义错误（实际深度与 UI 提示不一致）
+- 修复全局规则无法覆盖 legacy `Tool.followUp` 的问题
+- 修复 URLScan → VT 参数不匹配（URL 节点无 IP 地址字段）
+- 修复自定义规则 ID 冲突、存储膨胀、重复规则无检查等问题
 
 ---
 
